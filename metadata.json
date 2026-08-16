@@ -1,0 +1,6 @@
+{
+  "name": "سیستەمی پیشەیی بەڕێوەبردنی ستۆرج باتری",
+  "description": "سیستەمێکی هۆشمەند بۆ بيرخستنەوە و بەڕێوەبردنی کاتی چارجکردنی باتری هەموو ٤٠ ڕۆژ جارێک",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

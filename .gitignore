@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+build/
+
+# Generated files (copied by prepare-build.js — regenerated on each build)
+public/sql-wasm.wasm
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Electron Builder cache
+.electron-builder-cache/
