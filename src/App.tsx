@@ -40,8 +40,10 @@ import { ActivationModal } from './components/ActivationModal';
 import { PrintReportModal } from './components/PrintReportModal';
 import { StorageConfirmModal } from './components/StorageConfirmModal';
 import { UpdateModal } from './components/UpdateModal';
+import { ModernDialog, DialogState } from './components/ModernDialog';
 import { getLicenseState } from './utils/licenseManager';
 import { LicenseState, UpdateCheckResult } from './types';
+import { APP_CONFIG } from './constants/appConfig';
 import { DRONE_CATEGORIES, getNormalizedCategory, DEFAULT_CATEGORY } from './constants/categories';
 import {
   BoltIcon,
@@ -115,6 +117,24 @@ export default function App() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
 
+  // Modern Dialog State
+  const [dialogState, setDialogState] = useState<DialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
+
+  const showDialog = (config: Omit<DialogState, 'isOpen'>) => {
+    setDialogState({
+      isOpen: true,
+      ...config,
+    });
+  };
+
+  const closeDialog = () => {
+    setDialogState((prev) => ({ ...prev, isOpen: false }));
+  };
+
   const handleOpenAddModalForCategory = (catId?: string) => {
     setAddModalDefaultCategory(catId);
     setIsAddModalOpen(true);
@@ -137,8 +157,9 @@ export default function App() {
     // Auto-check for updates silently after 2 seconds
     const timer = setTimeout(async () => {
       try {
+        const repo = (settings.githubRepo || APP_CONFIG.GITHUB_REPO || '').trim();
         if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
-          const res = await (window as any).electronAPI.checkForUpdate();
+          const res = await (window as any).electronAPI.checkForUpdate(repo);
           if (isMounted && res && res.success && res.hasUpdate) {
             setUpdateCheckResult(res);
             setIsUpdateModalOpen(true);
@@ -247,32 +268,145 @@ export default function App() {
     playSoundEffect('success');
   };
 
-  // Action: GitHub Release Update Check (Fully Automatic)
+  // Action: GitHub Release Update Check (Fully Automatic with Electron & Web support)
   const handleCheckForUpdates = async (isSilent: boolean = false) => {
     setIsCheckingUpdate(true);
     setUpdateCheckError(null);
 
+    const repo = (settings.githubRepo || APP_CONFIG.GITHUB_REPO || '').trim();
+
     try {
       if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
-        const res = await (window as any).electronAPI.checkForUpdate();
+        const res = await (window as any).electronAPI.checkForUpdate(repo);
         setIsCheckingUpdate(false);
         if (res.success) {
           setUpdateCheckResult(res);
           if (res.hasUpdate) {
             setIsUpdateModalOpen(true);
           } else if (!isSilent) {
-            alert(`زۆر باشە! وەشانی بەرنامەکەت نوێترین وەشانە (v${res.currentVersion}).`);
+            showDialog({
+              type: 'success',
+              title: 'وەشانی بەرنامە نوێیە',
+              message: `زۆر باشە! وەشانی بەرنامەکەت نوێترین وەشانە (v${res.currentVersion}).`,
+              confirmText: 'دەستخۆش',
+            });
           }
         } else {
-          if (!isSilent) setUpdateCheckError(res.error || 'کێشە لە وەرگرتنی ئەپدەیت ڕوویدا');
+          const errText = res.error || 'کێشە لە وەرگرتنی ئەپدەیت ڕوویدا';
+          if (!isSilent) {
+            setUpdateCheckError(errText);
+            showDialog({
+              type: 'warning',
+              title: 'پشکنینی ئەپدەیت',
+              message: errText,
+              confirmText: 'باشە',
+            });
+          }
         }
       } else {
+        // Fallback for Web Browser environment (direct GitHub API fetch)
+        let repoPath = repo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/$/, '');
+        if (!repoPath.includes('/')) repoPath = 'amdakalar/Battery-Storage-System';
+
+        let res = await fetch(`https://api.github.com/repos/${repoPath}/releases/latest`);
+        let releaseData: any;
+        if (res.status === 404) {
+          const listRes = await fetch(`https://api.github.com/repos/${repoPath}/releases`);
+          if (listRes.ok) {
+            const list = await listRes.json();
+            if (Array.isArray(list) && list.length > 0) {
+              releaseData = list[0];
+            }
+          }
+        } else if (res.ok) {
+          releaseData = await res.json();
+        }
+
         setIsCheckingUpdate(false);
-        if (!isSilent) setUpdateCheckError('ئەم تایبەتمەندییە تەنها لە ناو بەرنامەی سەر کۆمپیوتەر (Electron) ئیش دەکات.');
+
+        const currentVersion = APP_CONFIG.CURRENT_VERSION || '1.0.0';
+
+        if (!releaseData || !releaseData.tag_name) {
+          if (!isSilent) {
+            showDialog({
+              type: 'info',
+              title: 'پشکنینی ئەپدەیت',
+              message: 'تا ئێستا هیچ وەشانێکی نوێ لە بەشی Releases لە گیتهاپ دانەنراوە.',
+              confirmText: 'باشە',
+            });
+          }
+          return;
+        }
+
+        const cleanV = (v: string) => {
+          const m = v.match(/\d+(\.\d+)*/);
+          return m ? m[0] : v.replace(/^v/i, '').trim();
+        };
+
+        const lParts = cleanV(releaseData.tag_name).split('.').map((p) => parseInt(p, 10) || 0);
+        const cParts = cleanV(currentVersion).split('.').map((p) => parseInt(p, 10) || 0);
+        let hasUpdate = false;
+        for (let i = 0; i < Math.max(lParts.length, cParts.length, 3); i++) {
+          const l = lParts[i] || 0;
+          const c = cParts[i] || 0;
+          if (l > c) {
+            hasUpdate = true;
+            break;
+          }
+          if (l < c) {
+            hasUpdate = false;
+            break;
+          }
+        }
+
+        let exeAsset = (releaseData.assets || []).find((a: any) =>
+          typeof a.name === 'string' &&
+          a.name.toLowerCase().endsWith('.exe') &&
+          !a.name.toLowerCase().includes('.blockmap')
+        );
+        if (!exeAsset && releaseData.assets && releaseData.assets.length > 0) {
+          exeAsset = releaseData.assets.find((a: any) => !a.name.toLowerCase().endsWith('.blockmap')) || releaseData.assets[0];
+        }
+
+        const updateResult: UpdateCheckResult = {
+          success: true,
+          hasUpdate,
+          latestVersion: cleanV(releaseData.tag_name),
+          currentVersion,
+          releaseName: releaseData.name || releaseData.tag_name,
+          releaseNotes: releaseData.body || 'وەشانی نوێ لە گیتهاپ بەردەستە.',
+          publishedAt: releaseData.published_at,
+          downloadUrl: exeAsset ? exeAsset.browser_download_url : undefined,
+          fileName: exeAsset ? exeAsset.name : undefined,
+          fileSize: exeAsset ? exeAsset.size : undefined,
+          htmlUrl: releaseData.html_url,
+        };
+
+        setUpdateCheckResult(updateResult);
+
+        if (hasUpdate) {
+          setIsUpdateModalOpen(true);
+        } else if (!isSilent) {
+          showDialog({
+            type: 'success',
+            title: 'وەشانی بەرنامە نوێیە',
+            message: `زۆر باشە! وەشانی بەرنامەکەت نوێترین وەشانە (v${currentVersion}).`,
+            confirmText: 'دەستخۆش',
+          });
+        }
       }
     } catch (err: any) {
       setIsCheckingUpdate(false);
-      if (!isSilent) setUpdateCheckError('کێشە لە پەیوەندیکردن بە API ی گیتهاپ ڕوویدا');
+      const errText = err.message || 'کێشە لە پەیوەندیکردن بە API ی گیتهاپ ڕوویدا';
+      if (!isSilent) {
+        setUpdateCheckError(errText);
+        showDialog({
+          type: 'danger',
+          title: 'پشکنینی ئەپدەیت',
+          message: errText,
+          confirmText: 'تێگەیشتم',
+        });
+      }
     }
   };
 
@@ -293,18 +427,41 @@ export default function App() {
 
   // Action: Clear Deletion Logs
   const handleClearDeletionLogs = () => {
-    if (window.confirm('ئایا دڵنیایت لە سڕینەوەی تەواوی لۆگەکانی سڕینەوە؟')) {
-      const updated = clearDeletionLogs();
-      setDeletionLogs(updated);
-    }
+    showDialog({
+      type: 'delete',
+      title: 'سڕینەوەی لۆگەکانی سڕینەوە',
+      message: 'ئایا دڵنیایت لە سڕینەوەی تەواوی لۆگەکانی سڕینەوە؟',
+      details: 'سەرجەم تۆمار و مێژووی سڕینەوە لە بەشی لۆگ بە یەکجاری پاک دەکرێتەوە و ناگەڕێتەوە.',
+      isConfirm: true,
+      confirmText: 'سڕینەوە',
+      cancelText: 'پەشیمانبوونەوە',
+      onConfirm: () => {
+        const updated = clearDeletionLogs();
+        setDeletionLogs(updated);
+        playSoundEffect('alert');
+      },
+    });
   };
 
   // Action: Delete Battery
   const handleDeleteBattery = (batteryId: string) => {
-    if (window.confirm('ئایا دڵنیایت لە سڕینەوەی ئەم باترییە؟')) {
-      const updated = deleteBattery(batteryId);
-      setBatteries(updated);
-    }
+    const targetBattery = batteries.find((b) => b.id === batteryId);
+    showDialog({
+      type: 'delete',
+      title: 'سڕینەوەی باتری',
+      message: targetBattery
+        ? `ئایا دڵنیایت لە سڕینەوەی باتری "${targetBattery.name}"؟`
+        : 'ئایا دڵنیایت لە سڕینەوەی ئەم باترییە؟',
+      details: 'باترییەکە و تەواوی زانیاری و مێژووی خولەکانی ستۆرجکردنی لە سیستەمەکە دەسڕدرێتەوە.',
+      isConfirm: true,
+      confirmText: 'سڕینەوە',
+      cancelText: 'پەشیمانبوونەوە',
+      onConfirm: () => {
+        const updated = deleteBattery(batteryId);
+        setBatteries(updated);
+        playSoundEffect('alert');
+      },
+    });
   };
 
   // Action: Toggle Audio
@@ -339,9 +496,22 @@ export default function App() {
           const content = event.target?.result as string;
           if (content && importDataJSON(content)) {
             setBatteries(loadBatteries());
-            alert('دراوەکان بەسەرکەوتوویی هێنرانە ناو سیستەمەکەوە.');
+            playSoundEffect('success');
+            showDialog({
+              type: 'success',
+              title: 'سەرکەوتوو بوو',
+              message: 'دراوەکان بەسەرکەوتوویی هێنرانە ناو سیستەمەکەوە.',
+              confirmText: 'دەستخۆش',
+            });
           } else {
-            alert('هەڵەیەک لە خوێندنەوەی پەڕگەی پشتیوان ڕوویدا.');
+            playSoundEffect('alert');
+            showDialog({
+              type: 'danger',
+              title: 'هەڵە لە هێنانی داتا',
+              message: 'هەڵەیەک لە خوێندنەوەی پەڕگەی پشتیوان ڕوویدا.',
+              details: 'تکایە دڵنیابەرەوە پەڕگەیەکی دروستی JSONـی داتای باترییەکان هەڵبژێردراوە.',
+              confirmText: 'تێگەیشتم',
+            });
           }
         };
         reader.readAsText(file);
@@ -1035,192 +1205,141 @@ export default function App() {
   };
 
   const renderSettingsContent = () => (
-    <div className="space-y-5 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl">
-      
-      {/* Main Settings Grid (Formal Minimal Executive Design) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        {/* 1. GitHub Auto-Update Section */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all md:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <SparklesIcon className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">نوێکردنەوەی ئۆتۆماتیکی بەرنامە (Auto System Updates)</h3>
-                <p className="text-xs text-slate-500 mt-0.5 font-medium">پشکنینی خۆکار و وەرگرتنی وەشانی نوێ لە GitHub Releases دەستبەجێ لە کاتی بڵاوکردنەوەدا</p>
-              </div>
-            </div>
+    <div className="space-y-3 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl max-w-3xl">
 
-            <button
-              onClick={() => handleCheckForUpdates(false)}
-              disabled={isCheckingUpdate}
-              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all shrink-0 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isCheckingUpdate ? (
-                <>
-                  <ArrowPathIcon className="w-4 h-4 animate-spin text-emerald-400" />
-                  <span>پشکنین دەکرێت...</span>
-                </>
-              ) : (
-                <>
-                  <ArrowDownTrayIcon className="w-4 h-4 text-emerald-400" />
-                  <span>پشکنین بۆ وەشانی نوێ</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex-wrap">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-slate-700">وەشانی ئێستای بەرنامە:</span>
-              <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-1 rounded-md border border-slate-200 text-xs">
-                v1.0.0
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200/80">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>پێوەبەستنی ئۆتۆماتیکی لەگەڵ GitHub Releases چالاکە</span>
-            </div>
-          </div>
-
-          {updateCheckError && (
-            <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl text-xs text-rose-800 font-bold flex items-center gap-2">
-              <ExclamationCircleIcon className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{updateCheckError}</span>
-            </div>
-          )}
-        </div>
-
-        {/* 2. Audio Notification Settings */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-              <SpeakerWaveIcon className="w-4.5 h-4.5 text-slate-800" />
+      {/* ─── 1. نوێکردنەوەی ئۆتۆماتیکی ─── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        {/* Header row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
+              <SparklesIcon className="w-4.5 h-4.5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">دەنگی ئاگادارکردنەوە</h3>
-              <p className="text-xs text-slate-500 font-medium">لێدانی دەنگ لە کاتی ئەنجامدانی ستۆرج یان کردارەکان</p>
+              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">نوێکردنەوەی ئۆتۆماتیکی بەرنامە</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">پشکنینی خۆکار و وەرگرتنی وەشانی نوێ لە GitHub Releases</p>
             </div>
           </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-            <span className="text-xs font-bold text-slate-700">چالاککردنی دەنگی ئاگادارکردنەوە</span>
-            <button
-              onClick={handleToggleAudio}
-              className={`w-11 h-6 rounded-full transition-colors relative ${
-                settings.enableAudioAlerts ? 'bg-slate-900' : 'bg-slate-200'
-              }`}
-            >
-              <div className={`w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 ${
-                settings.enableAudioAlerts ? 'right-5.5' : 'right-0.5'
-              }`}></div>
-            </button>
-          </div>
-        </div>
-
-        {/* 3. Time Simulator Tool */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-              <CalendarIcon className="w-4.5 h-4.5 text-slate-800" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">ئامرازی تاقیکردنەوەی کات</h3>
-              <p className="text-xs text-slate-500 font-medium">تاقیکردنەوەی سیناریۆکانی ستۆرج بۆ ڕۆژانی جیاواز</p>
-            </div>
-          </div>
-
           <button
-            onClick={() => setIsSimulatorOpen(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 transition-all"
+            onClick={() => handleCheckForUpdates(false)}
+            disabled={isCheckingUpdate}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-2 disabled:opacity-50"
           >
-            <AdjustmentsHorizontalIcon className="w-4 h-4 text-slate-600" />
-            <span>کردنەوەی ئامرازی کات</span>
+            {isCheckingUpdate ? (
+              <><ArrowPathIcon className="w-3.5 h-3.5 animate-spin text-emerald-400" /><span>پشکنین دەکرێت...</span></>
+            ) : (
+              <><ArrowDownTrayIcon className="w-3.5 h-3.5 text-emerald-400" /><span>پشکنین بۆ وەشانی نوێ</span></>
+            )}
           </button>
         </div>
 
-        {/* 4. System Backup & Data Management */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all md:col-span-2">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-              <ArrowDownTrayIcon className="w-4.5 h-4.5 text-slate-800" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-sm">پشتیوانکردنی داتاکان (System Backup & Restore)</h3>
-              <p className="text-xs text-slate-500 font-medium">دەرهێنانی پشتیوان (Export) یان گەڕاندنەوەی (Import) پەڕگەی دراوەکان</p>
-            </div>
+        {updateCheckError && (
+          <div className="border-t border-rose-100 bg-rose-50 px-5 py-3 flex items-center gap-2 text-xs text-rose-700 font-semibold">
+            <ExclamationCircleIcon className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>{updateCheckError}</span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
-            <button
-              onClick={handleExportData}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all shadow-xs"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4 text-emerald-400" />
-              <span>دەرهێنانی داتاکان (Export JSON)</span>
-            </button>
-
-            <button
-              onClick={handleImportData}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs border border-slate-200 transition-all"
-            >
-              <ArrowUpTrayIcon className="w-4 h-4 text-slate-600" />
-              <span>هێنانی داتاکان (Import JSON)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 5. Danger Zone: Clear Data */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all md:col-span-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-                <TrashIcon className="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">سڕینەوەی سەرجەم داتاکانی سیستەم</h3>
-                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-medium">
-                  سڕینەوەی سەرجەم باترییەکان، ڤۆڵتی سێڵەکان و مێژووی ستۆرجکردن بە شێوەیەکی یەکجاری.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsClearDataModalOpen(true)}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all shrink-0 flex items-center justify-center gap-2"
-            >
-              <TrashIcon className="w-4 h-4" />
-              <span>سڕینەوەی داتاکان</span>
-            </button>
-          </div>
-        </div>
-
+        )}
       </div>
 
-      {/* 3. Deletion Logs Section (Formal Minimal Table) */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      {/* ─── 2. دەنگی ئاگادارکردنەوە ─── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
-              <ClockIcon className="w-5 h-5 text-slate-800" />
+            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+              <SpeakerWaveIcon className="w-4.5 h-4.5 text-slate-600" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">لۆگی سڕینەوەی داتاکان (Deletion Logs)</h3>
-              <p className="text-xs text-slate-500 font-medium">تۆماری فەرمی سەرجەم پرۆسەکانی سڕینەوەی گشتی</p>
+              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">دەنگی ئاگادارکردنەوە</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">لێدانی دەنگ لە کاتی ئەنجامدانی ستۆرج یان کردارەکان</p>
             </div>
           </div>
+          <button
+            onClick={handleToggleAudio}
+            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+              settings.enableAudioAlerts ? 'bg-slate-900' : 'bg-slate-200'
+            }`}
+          >
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-200 ${
+              settings.enableAudioAlerts ? 'right-5.5' : 'right-0.5'
+            }`} />
+          </button>
+        </div>
+      </div>
 
+      {/* ─── 3. پشتیوانکردنی داتاکان ─── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+            <ArrowDownTrayIcon className="w-4.5 h-4.5 text-slate-600" />
+          </div>
+          <div>
+            <h3 className="text-[13px] font-bold text-slate-900 leading-tight">پشتیوانکردنی داتاکان</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">دەرهێنانی پشتیوان (Export) یان گەڕاندنەوەی (Import) پەڕگەی دراوەکان</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-slate-100">
+          <button
+            onClick={handleExportData}
+            className="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 px-4 py-3.5 text-xs font-bold text-slate-900 transition-colors"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4 text-slate-600" />
+            <span>دەرهێنانی داتا (Export JSON)</span>
+          </button>
+          <button
+            onClick={handleImportData}
+            className="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 px-4 py-3.5 text-xs font-bold text-slate-900 transition-colors"
+          >
+            <ArrowUpTrayIcon className="w-4 h-4 text-slate-600" />
+            <span>هێنانی داتا (Import JSON)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 4. سڕینەوەی سەرجەم داتاکان (Danger Zone) ─── */}
+      <div className="bg-white rounded-2xl border border-rose-100 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100">
+              <TrashIcon className="w-4.5 h-4.5 text-rose-500" />
+            </div>
+            <div>
+              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">سڕینەوەی سەرجەم داتاکانی سیستەم</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium leading-relaxed">
+                سڕینەوەی سەرجەم باترییەکان، مێژوو و داتاکانی ستۆرج بە شێوەیەکی یەکجاری
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsClearDataModalOpen(true)}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center gap-2"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            <span>سڕینەوەی داتاکان</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 5. لۆگی سڕینەوەکان ─── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+              <ClockIcon className="w-4.5 h-4.5 text-slate-600" />
+            </div>
+            <div>
+              <h3 className="text-[13px] font-bold text-slate-900 leading-tight">لۆگی سڕینەوەی داتاکان</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">تۆماری فەرمی سەرجەم پرۆسەکانی سڕینەوەی گشتی</p>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-full border border-slate-200">
-              کۆی لۆگەکان: {deletionLogs.length}
+            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              {deletionLogs.length}
             </span>
             {deletionLogs.length > 0 && (
               <button
                 onClick={handleClearDeletionLogs}
-                className="text-xs text-rose-600 hover:text-rose-700 font-bold hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1"
+                className="text-xs text-rose-500 hover:text-rose-700 font-bold hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
                 <span>پاککردنەوە</span>
@@ -1229,36 +1348,30 @@ export default function App() {
           </div>
         </div>
 
+        {/* Body */}
         {deletionLogs.length === 0 ? (
-          <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <p className="text-xs text-slate-500 font-semibold">هیچ لۆگێکی سڕینەوە تۆمار نەکراوە</p>
+          <div className="px-5 py-8 text-center">
+            <p className="text-xs text-slate-400 font-semibold">هیچ لۆگێکی سڕینەوە تۆمار نەکراوە</p>
           </div>
         ) : (
-          <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+          <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
             {deletionLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-4 bg-slate-50/80 border border-slate-200/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-              >
+              <div key={log.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50 transition-colors">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-900 bg-slate-200 text-slate-800 px-2 py-0.5 rounded-md">
+                    <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
                       سڕینەوەی {log.batteryCountCleared} باتری
                     </span>
-                    <span className="text-slate-500 font-medium">
+                    <span className="text-slate-400 font-medium">
                       لەگەڵ {log.historyCountCleared} تۆماری مێژوویی
                     </span>
                   </div>
-                  <p className="text-slate-600 font-medium">
-                    📝 هۆکار: <span className="font-bold text-slate-800">{log.reason || 'سڕینەوەی دەستی'}</span>
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    👤 بەکارهێنەر: {log.clearedBy || 'بەڕێوەبەری سیستەم'}
+                  <p className="text-slate-500 font-medium">
+                    هۆکار: <span className="font-bold text-slate-700">{log.reason || 'سڕینەوەی دەستی'}</span>
                   </p>
                 </div>
-
-                <div className="text-left sm:text-right font-bold text-slate-600 text-[11px] bg-white px-3 py-1.5 rounded-xl border border-slate-200 shrink-0">
-                  📅 {formatGregorianKurdish(log.timestamp.split('T')[0])}
+                <div className="shrink-0 text-right font-mono font-bold text-slate-500 text-[11px] bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl">
+                  {formatGregorianKurdish(log.timestamp.split('T')[0])}
                   <div className="text-[10px] text-slate-400 font-normal dir-ltr">
                     {new Date(log.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -1452,7 +1565,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarCollapsed ? 'lg:mr-20' : 'lg:mr-80'
+        sidebarCollapsed ? 'lg:mr-[72px]' : 'lg:mr-64'
       }`}>
         
         {/* Mobile Header */}
@@ -1526,18 +1639,32 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Row 2: 5 Category Tabs in a visible container */}
-              <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 overflow-x-auto scrollbar-none">
+              {/* Row 2: Category Tabs — minimal formal underline style */}
+              <div className="flex items-center gap-0 border-b border-slate-100 overflow-x-auto scrollbar-none -mb-px">
+                {/* "All" tab */}
                 <button
                   onClick={() => setSelectedCategoryTab('ALL')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
-                    selectedCategoryTab === 'ALL'
-                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
+                  className={`
+                    relative flex items-center gap-1.5 px-4 py-2.5 text-[11.5px] font-semibold
+                    shrink-0 transition-all duration-150 border-b-2 -mb-px
+                    ${selectedCategoryTab === 'ALL'
+                      ? 'border-slate-900 text-slate-900 font-bold'
+                      : 'border-transparent text-slate-400 hover:text-slate-700 hover:border-slate-300'}
+                  `}
                 >
-                  هەموو بەشەکان ({batteries.length})
+                  <span>هەموو بەشەکان</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md transition-colors ${
+                    selectedCategoryTab === 'ALL'
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {batteries.length}
+                  </span>
                 </button>
+
+                {/* Divider */}
+                <div className="w-px h-4 bg-slate-200 mx-1 shrink-0" />
+
                 {DRONE_CATEGORIES.map((cat) => {
                   const catCount = batteries.filter(b => getNormalizedCategory(b.category) === cat.id).length;
                   const isSelected = selectedCategoryTab === cat.id;
@@ -1545,23 +1672,29 @@ export default function App() {
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategoryTab(isSelected ? 'ALL' : cat.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                      }`}
+                      className={`
+                        relative flex items-center gap-1.5 px-3.5 py-2.5 text-[11.5px] font-semibold
+                        shrink-0 transition-all duration-150 border-b-2 -mb-px
+                        ${isSelected
+                          ? 'border-slate-900 text-slate-900 font-bold'
+                          : 'border-transparent text-slate-400 hover:text-slate-700 hover:border-slate-300'}
+                      `}
                     >
                       {cat.type === 'CAMERA' ? (
-                        <VideoCameraIcon className="w-3.5 h-3.5 shrink-0" />
+                        <VideoCameraIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${isSelected ? 'text-slate-700' : 'text-slate-400'}`} />
                       ) : (
-                        <SignalIcon className="w-3.5 h-3.5 shrink-0" />
+                        <SignalIcon className={`w-3.5 h-3.5 shrink-0 transition-colors ${isSelected ? 'text-slate-700' : 'text-slate-400'}`} />
                       )}
                       <span>{cat.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
-                        isSelected ? 'bg-slate-100 text-slate-700' : 'bg-slate-200/60 text-slate-500'
-                      }`}>
-                        {catCount}
-                      </span>
+                      {catCount > 0 && (
+                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md transition-colors ${
+                          isSelected
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {catCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -1765,6 +1898,11 @@ export default function App() {
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
         updateData={updateCheckResult}
+      />
+
+      <ModernDialog
+        dialog={dialogState}
+        onClose={closeDialog}
       />
 
     </div>

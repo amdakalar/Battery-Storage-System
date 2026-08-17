@@ -48,8 +48,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   if (!isOpen || !updateData) return null;
 
   const handleStartDownload = async () => {
-    if (!updateData.downloadUrl) {
-      setErrorMessage('لینکی داونلۆدکردن لە ریلیزی گیتهاپ نەدۆزرایەوە. تکایە دڵنیابەرەوە پەڕگەی Setup.exe دانراوە.');
+    const downloadTarget = updateData.downloadUrl;
+    if (!downloadTarget) {
+      if (updateData.htmlUrl) {
+        window.open(updateData.htmlUrl, '_blank');
+      } else {
+        setErrorMessage('لینکی داونلۆدکردن لە ریلیزی گیتهاپ نەدۆزرایەوە.');
+      }
       return;
     }
 
@@ -59,7 +64,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     try {
       if ((window as any).electronAPI?.downloadAndInstallUpdate) {
         const res = await (window as any).electronAPI.downloadAndInstallUpdate(
-          updateData.downloadUrl,
+          downloadTarget,
           updateData.fileName || 'BatterySystemSetup.exe'
         );
 
@@ -72,7 +77,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         }
       } else {
         // Fallback in web browser mode: open download URL directly in new tab
-        window.open(updateData.downloadUrl, '_blank');
+        window.open(downloadTarget, '_blank');
         setDownloading(false);
       }
     } catch (err: any) {

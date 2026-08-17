@@ -284,13 +284,16 @@ ipcMain.handle('save-database', async (event, binaryData: Uint8Array) => {
 // ─── GitHub Releases Auto-Updater System ─────────────────────────────────────
 
 function cleanVersion(v: string): string {
-  return v.replace(/^v/i, '').trim();
+  if (!v) return '0.0.0';
+  const match = v.match(/\d+(\.\d+)*/);
+  return match ? match[0] : v.replace(/^v/i, '').trim();
 }
 
 function isNewerVersion(latest: string, current: string): boolean {
-  const lParts = cleanVersion(latest).split('.').map(Number);
-  const cParts = cleanVersion(current).split('.').map(Number);
-  for (let i = 0; i < Math.max(lParts.length, cParts.length); i++) {
+  const lParts = cleanVersion(latest).split('.').map((p) => parseInt(p, 10) || 0);
+  const cParts = cleanVersion(current).split('.').map((p) => parseInt(p, 10) || 0);
+  const maxLen = Math.max(lParts.length, cParts.length, 3);
+  for (let i = 0; i < maxLen; i++) {
     const l = lParts[i] || 0;
     const c = cParts[i] || 0;
     if (l > c) return true;
@@ -299,70 +302,96 @@ function isNewerVersion(latest: string, current: string): boolean {
   return false;
 }
 
-function fetchJson(url: string): Promise<any> {
+function fetchJson(url: string, redirectCount = 0): Promise<any> {
   return new Promise((resolve, reject) => {
+    if (redirectCount > 8) {
+      reject(new Error('Too many redirects while contacting GitHub API'));
+      return;
+    }
     const options = {
       headers: {
-        'User-Agent': 'Battery-Storage-System-App',
+        'User-Agent': 'Battery-Storage-System-Desktop-App',
         'Accept': 'application/vnd.github.v3+json',
       },
     };
-    https.get(url, options, (res) => {
-      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchJson(res.headers.location).then(resolve).catch(reject);
-        return;
-      }
-      let body = '';
-      res.on('data', (chunk) => (body += chunk));
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(body);
-          if (res.statusCode === 404) {
-            resolve({ notFound: true, message: parsed.message || 'Not Found' });
-          } else if (res.statusCode !== 200) {
-            reject(new Error(`GitHub API HTTP ${res.statusCode}: ${parsed.message || 'Error'}`));
-          } else {
-            resolve(parsed);
-          }
-        } catch (e: any) {
-          reject(new Error(`Failed to parse response: ${e.message}`));
+    https
+      .get(url, options, (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const redirectUrl = new URL(res.headers.location, url).toString();
+          fetchJson(redirectUrl, redirectCount + 1).then(resolve).catch(reject);
+          return;
         }
-      });
-    }).on('error', reject);
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          try {
+            const parsed = body ? JSON.parse(body) : {};
+            if (res.statusCode === 404) {
+              resolve({ notFound: true, message: parsed.message || 'Not Found' });
+            } else if (res.statusCode !== 200) {
+              reject(new Error(`GitHub API HTTP ${res.statusCode}: ${parsed.message || 'Error'}`));
+            } else {
+              resolve(parsed);
+            }
+          } catch (e: any) {
+            reject(new Error(`Failed to parse response from GitHub: ${e.message}`));
+          }
+        });
+      })
+      .on('error', reject);
   });
 }
 
-function downloadFile(url: string, destPath: string, onProgress: (transferred: number, total: number) => void): Promise<void> {
+function downloadFile(
+  url: string,
+  destPath: string,
+  onProgress: (transferred: number, total: number) => void
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const request = (currentUrl: string) => {
-      const protocol = currentUrl.startsWith('https') ? https : http;
-      const req = protocol.get(currentUrl, { headers: { 'User-Agent': 'Battery-Storage-System-App' } }, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          request(res.headers.location);
-          return;
+    const downloadWithRedirect = (currentUrl: string, redirectCount = 0) => {
+      if (redirectCount > 10) {
+        reject(new Error('Too many redirects while downloading update file'));
+        return;
+      }
+      const parsed = new URL(currentUrl);
+      const protocol = parsed.protocol === 'https:' ? https : http;
+      const req = protocol.get(
+        currentUrl,
+        {
+          headers: {
+            'User-Agent': 'Battery-Storage-System-Desktop-App',
+            'Accept': 'application/octet-stream',
+          },
+        },
+        (res) => {
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            const redirectUrl = new URL(res.headers.location, currentUrl).toString();
+            downloadWithRedirect(redirectUrl, redirectCount + 1);
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`Download failed with status code ${res.statusCode}`));
+            return;
+          }
+          const total = parseInt(res.headers['content-length'] || '0', 10);
+          let transferred = 0;
+          const fileStream = fs.createWriteStream(destPath);
+          res.on('data', (chunk) => {
+            transferred += chunk.length;
+            onProgress(transferred, total);
+          });
+          res.pipe(fileStream);
+          fileStream.on('finish', () => {
+            fileStream.close(() => resolve());
+          });
+          fileStream.on('error', (err) => {
+            fs.unlink(destPath, () => reject(err));
+          });
         }
-        if (res.statusCode !== 200) {
-          reject(new Error(`Download failed with status code ${res.statusCode}`));
-          return;
-        }
-        const total = parseInt(res.headers['content-length'] || '0', 10);
-        let transferred = 0;
-        const fileStream = fs.createWriteStream(destPath);
-        res.on('data', (chunk) => {
-          transferred += chunk.length;
-          onProgress(transferred, total);
-        });
-        res.pipe(fileStream);
-        fileStream.on('finish', () => {
-          fileStream.close(() => resolve());
-        });
-        fileStream.on('error', (err) => {
-          fs.unlink(destPath, () => reject(err));
-        });
-      });
+      );
       req.on('error', (err) => reject(err));
     };
-    request(url);
+    downloadWithRedirect(url);
   });
 }
 
@@ -395,11 +424,20 @@ ipcMain.handle('check-github-update', async (_event, customRepo?: string) => {
 
     const apiUrl = `https://api.github.com/repos/${repoPath}/releases/latest`;
     log('INFO', `Checking for updates from: ${apiUrl}`);
-    const releaseData = await fetchJson(apiUrl);
+    let releaseData = await fetchJson(apiUrl);
+
+    // Fallback: If /releases/latest returns 404, check /releases list (for pre-releases or tags)
+    if (releaseData.notFound) {
+      log('INFO', 'Latest release not found. Checking all releases list...');
+      const allReleases = await fetchJson(`https://api.github.com/repos/${repoPath}/releases`);
+      if (Array.isArray(allReleases) && allReleases.length > 0) {
+        releaseData = allReleases[0];
+      }
+    }
 
     const currentVersion = app.getVersion();
 
-    if (releaseData.notFound) {
+    if (releaseData.notFound || !releaseData.tag_name) {
       log('INFO', 'No GitHub release found for this repository yet.');
       return {
         success: true,
@@ -414,9 +452,13 @@ ipcMain.handle('check-github-update', async (_event, customRepo?: string) => {
     const latestVersion = releaseData.tag_name || releaseData.name || '';
     const hasUpdate = isNewerVersion(latestVersion, currentVersion);
 
-    let exeAsset = (releaseData.assets || []).find((a: any) => a.name.endsWith('.exe'));
+    let exeAsset = (releaseData.assets || []).find((a: any) =>
+      typeof a.name === 'string' &&
+      a.name.toLowerCase().endsWith('.exe') &&
+      !a.name.toLowerCase().includes('.blockmap')
+    );
     if (!exeAsset && releaseData.assets && releaseData.assets.length > 0) {
-      exeAsset = releaseData.assets[0];
+      exeAsset = releaseData.assets.find((a: any) => !a.name.toLowerCase().endsWith('.blockmap')) || releaseData.assets[0];
     }
 
     return {
@@ -425,7 +467,7 @@ ipcMain.handle('check-github-update', async (_event, customRepo?: string) => {
       latestVersion: cleanVersion(latestVersion),
       currentVersion,
       releaseName: releaseData.name || latestVersion,
-      releaseNotes: releaseData.body || 'هیچ تێبینییەک لەگەڵ وەشانی نوێدا نەنووسراوە.',
+      releaseNotes: releaseData.body || 'وەشانی نوێ لە گیتهاپ بەردەستە.',
       publishedAt: releaseData.published_at,
       downloadUrl: exeAsset ? exeAsset.browser_download_url : undefined,
       fileName: exeAsset ? exeAsset.name : undefined,
