@@ -47,6 +47,7 @@ import { CustomDialog, DialogConfig } from './components/CustomDialog';
 import { getLicenseState } from './utils/licenseManager';
 import { LicenseState, UpdateCheckResult } from './types';
 import { DroneCategoryInfo, loadCategories, addCustomCategory, updateCategory, deleteCustomCategory, getNormalizedCategory, DEFAULT_CATEGORY } from './constants/categories';
+import { APP_CONFIG } from './constants/appConfig';
 import {
   BoltIcon,
   InformationCircleIcon,
@@ -79,6 +80,10 @@ import {
   VideoCameraIcon,
   SignalIcon,
   Cog6ToothIcon,
+  ShieldCheckIcon,
+  TagIcon,
+  GlobeAltIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 
 export default function App() {
@@ -1258,190 +1263,355 @@ export default function App() {
   };
 
   const renderSettingsContent = () => (
-    <div className="space-y-3.5 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl max-w-3xl">
+    <div className="space-y-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl max-w-4xl pb-10">
 
-      {/* ─── 1. دەنگی ئاگادارکردنەوە ─── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white border border-slate-200/80 rounded-xl flex items-center justify-center text-slate-700 shadow-xs shrink-0">
-            <SpeakerWaveIcon className="w-4 h-4 text-slate-600" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 leading-tight">دەنگی ئاگادارکردنەوە</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">لێدانی دەنگ لە کاتی ئەنجامدانی ستۆرج یان کردارەکان</p>
-          </div>
-        </div>
-        <button
-          onClick={handleToggleAudio}
-          className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
-            settings.enableAudioAlerts ? 'bg-slate-900' : 'bg-slate-200'
-          }`}
-        >
-          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-xs transition-all duration-200 ${
-            settings.enableAudioAlerts ? 'right-5.5' : 'right-0.5'
-          }`} />
-        </button>
-      </div>
-
-      {/* ─── 2. پشتیوانکردنی داتاکان ─── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
-        <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
-          <div className="w-9 h-9 bg-white border border-slate-200/80 rounded-xl flex items-center justify-center text-slate-700 shadow-xs shrink-0">
-            <ArrowDownTrayIcon className="w-4 h-4 text-slate-600" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 leading-tight">پشتیوانکردنی داتاکان (Backup & Restore)</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium">دەرهێنانی پشتیوان (Export) یان گەڕاندنەوەی (Import) پەڕگەی دراوەکان</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <button
-            onClick={handleExportData}
-            className="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 rounded-lg border border-slate-200 transition-all shadow-2xs"
-          >
-            <ArrowDownTrayIcon className="w-3.5 h-3.5 text-slate-500" />
-            <span>دەرهێنانی داتا (Export JSON)</span>
-          </button>
-          <button
-            onClick={handleImportData}
-            className="flex items-center justify-center gap-2 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-800 rounded-lg border border-slate-200 transition-all shadow-2xs"
-          >
-            <ArrowUpTrayIcon className="w-3.5 h-3.5 text-slate-500" />
-            <span>هێنانی داتا (Import JSON)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── 3. سڕینەوەی سەرجەم داتاکان (Danger Zone) ─── */}
-      <div className="bg-white rounded-xl border border-rose-200/80 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 border border-rose-200/60">
-            <TrashIcon className="w-4 h-4 text-rose-600" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-900 leading-tight">سڕینەوەی سەرجەم داتاکانی سیستەم</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-medium leading-relaxed">
-              سڕینەوەی سەرجەم باترییەکان، مێژوو و داتاکانی ستۆرج بە شێوەیەکی یەکجاری
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsClearDataModalOpen(true)}
-          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
-        >
-          <TrashIcon className="w-3.5 h-3.5" />
-          <span>سڕینەوەی داتاکان</span>
-        </button>
-      </div>
-
-      {/* ─── 4. لۆگ و گەڕاندنەوەی داتاکان ─── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
-              <ClockIcon className="w-4 h-4 text-slate-600" />
+      {/* ═══════════════════════════════════════════════════════════════════════
+          گرووپی ١: ڕێکخستنە گشتییەکان و سیستەم (General Preferences & System)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        {/* Section Header */}
+        <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs shrink-0">
+              <Cog6ToothIcon className="w-4 h-4 text-slate-700" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-slate-900 leading-tight">لۆگ و گەڕاندنەوەی داتاکان</h3>
-                <span className="text-[10.5px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {deletionLogs.length}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">تۆماری سڕینەوەکان و گەڕاندنەوەی باترییە سڕاوەکان</p>
+              <h3 className="text-xs font-extrabold text-slate-900 leading-tight">ڕێکخستنە گشتییەکان (General Preferences)</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">هەڵبژاردنی تایبەتمەندییە سەرەکییەکان، دەنگ و بەشەکان</p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {deletionLogs.some((l) => l.deletedBatteries && l.deletedBatteries.length > 0 && !l.isRestored) && (
-              <button
-                onClick={handleRestoreAllDeletedData}
-                className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
-                title="گەڕاندنەوەی سەرجەم باترییە سڕاوەکان"
-              >
-                <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
-                <span>گەڕاندنەوەی هەموو</span>
-              </button>
-            )}
-
-            {deletionLogs.length > 0 && (
-              <button
-                onClick={handleClearDeletionLogs}
-                className="text-xs text-rose-600 hover:text-rose-700 font-semibold hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
-                title="سڕینەوەی مێژووی لۆگەکان"
-              >
-                <TrashIcon className="w-3.5 h-3.5" />
-                <span>پاککردنەوەی لۆگەکان</span>
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Body */}
-        {deletionLogs.length === 0 ? (
-          <div className="px-4 py-7 text-center">
-            <p className="text-xs text-slate-400 font-medium">هیچ داتایەکی سڕاوە یان لۆگێک تۆمار نەکراوە</p>
+        {/* Section Items */}
+        <div className="divide-y divide-slate-100 p-1">
+          {/* ١.١ دەنگی ئاگادارکردنەوە */}
+          <div className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/40 transition-colors rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+                <SpeakerWaveIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">دەنگی ئاگادارکردنەوە (Audio Alerts)</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">لێدانی دەنگ لە کاتی ئەنجامدانی چارجی ستۆرج یان کردارەکان</p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggleAudio}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${
+                settings.enableAudioAlerts ? 'bg-slate-900' : 'bg-slate-200'
+              }`}
+              title={settings.enableAudioAlerts ? 'ناچالاککردنی دەنگ' : 'چالاککردنی دەنگ'}
+            >
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-xs transition-all duration-200 ${
+                settings.enableAudioAlerts ? 'right-5.5' : 'right-0.5'
+              }`} />
+            </button>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-            {deletionLogs.map((log) => {
-              const hasDeletedBatteries = log.deletedBatteries && log.deletedBatteries.length > 0;
-              return (
-                <div key={log.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50/60 transition-colors">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
-                        سڕینەوەی {log.batteryCountCleared} باتری
-                      </span>
-                      <span className="text-slate-400 font-medium text-[11px]">
-                        لەگەڵ {log.historyCountCleared} تۆماری مێژوویی
-                      </span>
-                      {log.isRestored && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                          <CheckCircleIcon className="w-3 h-3 text-emerald-600" />
-                          گەڕێندراوەتەوە
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-slate-500 font-medium text-[11px] truncate">
-                      هۆکار: <span className="font-semibold text-slate-700">{log.reason || 'سڕینەوەی دەستی'}</span>
-                    </p>
-                    {hasDeletedBatteries && (
-                      <p className="text-[10.5px] text-slate-400 font-medium truncate">
-                        باترییەکان:{' '}
-                        <span className="text-slate-600 font-semibold">
-                          {log.deletedBatteries!.map((b) => b.name).slice(0, 4).join('، ')}
-                          {log.deletedBatteries!.length > 4 ? ` و ${log.deletedBatteries!.length - 4} دانەی تر` : ''}
-                        </span>
-                      </p>
-                    )}
-                  </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                    <div className="text-left font-mono font-bold text-slate-600 text-[11px]">
-                      <div>{log.timestamp.split('T')[0]}</div>
-                      <div className="text-[10px] text-slate-400 font-normal">
-                        {formatGregorianKurdish(log.timestamp.split('T')[0])} • {new Date(log.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+          {/* ١.٢ بەڕێوەبردنی پۆل و جۆری درۆنەکان */}
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/40 transition-colors rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+                <TagIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-slate-800">بەڕێوەبردنی پۆل و مۆدێلەکان (Categories)</h4>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded border border-slate-200">
+                    {categories.length} پۆل
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">زیادکردن، سڕینەوە و ڕێکخستنی جۆرەکانی درۆن و باتری</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <AdjustmentsHorizontalIcon className="w-3.5 h-3.5 text-slate-500" />
+              <span>بەڕێوەبردنی پۆلەکان</span>
+            </button>
+          </div>
+
+          {/* ١.٣ پشکنینی وەشانی نوێ و ئەپدەیت */}
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/40 transition-colors rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+                <ArrowPathIcon className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin text-emerald-600' : ''}`} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-slate-800">نوێکردنەوەی بەرنامە (Software Updates)</h4>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200/80">
+                    v{APP_CONFIG.CURRENT_VERSION}
+                  </span>
+                  {updateCheckResult?.hasUpdate && (
+                    <span className="text-[9px] font-black px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded animate-pulse">
+                      وەشانی نوێ بەردەستە!
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">پشکنینی ئۆتۆماتیکی لە ڕێگەی کۆگای فەرمی GitHub</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleCheckForUpdates(false)}
+              disabled={isCheckingUpdate}
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+            >
+              <ArrowPathIcon className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+              <span>{isCheckingUpdate ? 'پشکنین دەکرێت...' : 'پشکنینی نوێکارییەکان'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          گرووپی ٢: بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data Management & Storage)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        {/* Section Header */}
+        <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs shrink-0">
+              <ArrowDownTrayIcon className="w-4 h-4 text-slate-700" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-slate-900 leading-tight">بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data & Backup)</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">دەرهێنان، هاوردەکردن و گەڕاندنەوەی مێژووی باترییەکان</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* دوگمەکانی هاوردەکردن و هەناردەکردنی JSON */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/40 flex flex-col justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <ArrowDownTrayIcon className="w-3.5 h-3.5 text-slate-600" />
+                  <span>دەرهێنانی کۆپیی یەدەگ (Export JSON)</span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">
+                  پاشەکەوتکردنی هەموو باترییەکان و مێژووەکەی لە پەڕگەیەکی JSON
+                </p>
+              </div>
+              <button
+                onClick={handleExportData}
+                className="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-200 transition-all shadow-2xs flex items-center justify-center gap-1.5"
+              >
+                <ArrowDownTrayIcon className="w-3.5 h-3.5 text-slate-500" />
+                <span>دەرهێنانی داتا</span>
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/40 flex flex-col justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <ArrowUpTrayIcon className="w-3.5 h-3.5 text-slate-600" />
+                  <span>هێنانی کۆپیی یەدەگ (Import JSON)</span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">
+                  گەڕاندنەوەی داتاکان لە پەڕگەیەکی پێشتری JSON
+                </p>
+              </div>
+              <button
+                onClick={handleImportData}
+                className="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-200 transition-all shadow-2xs flex items-center justify-center gap-1.5"
+              >
+                <ArrowUpTrayIcon className="w-3.5 h-3.5 text-slate-500" />
+                <span>هێنانی داتا</span>
+              </button>
+            </div>
+          </div>
+
+          {/* لۆگ و گەڕاندنەوەی داتاکان */}
+          <div className="rounded-xl border border-slate-200/90 overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-200/80">
+              <div className="flex items-center gap-2.5">
+                <ClockIcon className="w-4 h-4 text-slate-600" />
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-slate-900 leading-tight">تۆماری سڕینەوە و گەڕاندنەوە (Deletion Logs)</h4>
+                  <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded-md">
+                    {deletionLogs.length}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {deletionLogs.some((l) => l.deletedBatteries && l.deletedBatteries.length > 0 && !l.isRestored) && (
+                  <button
+                    onClick={handleRestoreAllDeletedData}
+                    className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+                    title="گەڕاندنەوەی سەرجەم باترییە سڕاوەکان"
+                  >
+                    <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>گەڕاندنەوەی هەموو</span>
+                  </button>
+                )}
+
+                {deletionLogs.length > 0 && (
+                  <button
+                    onClick={handleClearDeletionLogs}
+                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                    title="سڕینەوەی مێژووی لۆگەکان"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                    <span>پاککردنەوەی لۆگەکان</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* List */}
+            {deletionLogs.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-xs text-slate-400 font-medium">هیچ داتایەکی سڕاوە یان لۆگێک تۆمار نەکراوە</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                {deletionLogs.map((log) => {
+                  const hasDeletedBatteries = log.deletedBatteries && log.deletedBatteries.length > 0;
+                  return (
+                    <div key={log.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50/60 transition-colors">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                            سڕینەوەی {log.batteryCountCleared} باتری
+                          </span>
+                          <span className="text-slate-400 font-medium text-[11px]">
+                            لەگەڵ {log.historyCountCleared} تۆماری مێژوویی
+                          </span>
+                          {log.isRestored && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                              <CheckCircleIcon className="w-3 h-3 text-emerald-600" />
+                              گەڕێندراوەتەوە
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-slate-500 font-medium text-[11px] truncate">
+                          هۆکار: <span className="font-semibold text-slate-700">{log.reason || 'سڕینەوەی دەستی'}</span>
+                        </p>
+                        {hasDeletedBatteries && (
+                          <p className="text-[10.5px] text-slate-400 font-medium truncate">
+                            باترییەکان:{' '}
+                            <span className="text-slate-600 font-semibold">
+                              {log.deletedBatteries!.map((b) => b.name).slice(0, 4).join('، ')}
+                              {log.deletedBatteries!.length > 4 ? ` و ${log.deletedBatteries!.length - 4} دانەی تر` : ''}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <div className="text-left font-mono font-bold text-slate-600 text-[11px]">
+                          <div>{log.timestamp.split('T')[0]}</div>
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            {formatGregorianKurdish(log.timestamp.split('T')[0])} • {new Date(log.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+
+                        {hasDeletedBatteries && !log.isRestored && (
+                          <button
+                            onClick={() => handleRestoreDeletedData(log.id)}
+                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-2xs shrink-0"
+                            title="گەڕاندنەوەی ئەم باترییانە"
+                          >
+                            <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>گەڕاندنەوە</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    {hasDeletedBatteries && !log.isRestored && (
-                      <button
-                        onClick={() => handleRestoreDeletedData(log.id)}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-2xs shrink-0"
-                        title="گەڕاندنەوەی ئەم باترییانە"
-                      >
-                        <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>گەڕاندنەوە</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          گرووپی ٣: دەربارەی سیستەم و مۆڵەت (About & License)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        {/* Section Header */}
+        <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs shrink-0">
+              <InformationCircleIcon className="w-4 h-4 text-slate-700" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-slate-900 leading-tight">دەربارەی سیستەم و مۆڵەت (About & License)</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">زانیاری وەشان، گەشەپێدەر و باری کاراکردنی سیستەم</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/70 space-y-1">
+            <span className="text-[10px] text-slate-400 font-bold">ناوی سیستەم</span>
+            <p className="text-xs font-bold text-slate-800">سیستەمی بەڕێوەبردنی ستۆرج</p>
+            <p className="text-[10.5px] font-mono text-slate-500">v{APP_CONFIG.CURRENT_VERSION}</p>
+          </div>
+
+          <div className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/70 space-y-1">
+            <span className="text-[10px] text-slate-400 font-bold">گەشەپێدەر و خاوەندارێتی</span>
+            <p className="text-xs font-bold text-slate-800">ئەحمەد م. ساڵح</p>
+            <p className="text-[10.5px] font-mono text-slate-500">Ahmed M. Salih</p>
+          </div>
+
+          <div className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200/70 flex flex-col justify-between gap-2">
+            <div className="space-y-1">
+              <span className="text-[10px] text-slate-400 font-bold">باری مۆڵەت (License)</span>
+              <div>
+                {licenseState.isActivated ? (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80 inline-flex items-center gap-1">
+                    <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    چالاککراوە (Active)
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/80 inline-flex items-center gap-1">
+                    تاقیکاری ({licenseState.daysRemaining} ڕۆژ ماوە)
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setIsActivationModalOpen(true)}
+              className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 py-1.5 px-2.5 rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1 shadow-2xs"
+            >
+              <KeyIcon className="w-3 h-3 text-slate-500" />
+              <span>باری مۆڵەت و کاراکردن</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          گرووپی ٤: ناوچەی مەترسیدار و سڕینەوە (Danger Zone)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl border border-rose-200/90 shadow-2xs overflow-hidden">
+        <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/70 flex items-center justify-center shrink-0">
+              <TrashIcon className="w-4 h-4 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 leading-tight">سڕینەوەی سەرجەم داتاکانی سیستەم (Clear All Data)</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 font-medium leading-relaxed">
+                سڕینەوەی سەرجەم باترییەکان، مێژوو و داتاکانی ستۆرج بە شێوەیەکی یەکجاری
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsClearDataModalOpen(true)}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            <span>سڕینەوەی داتاکان</span>
+          </button>
+        </div>
       </div>
 
     </div>
