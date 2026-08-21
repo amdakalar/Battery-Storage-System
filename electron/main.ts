@@ -4,6 +4,7 @@
  */
 
 import { app, BrowserWindow, ipcMain, shell, dialog, nativeImage } from 'electron';
+import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import https from 'https';
@@ -485,13 +486,33 @@ ipcMain.handle('download-and-install-update', async (event, { downloadUrl, fileN
       log('WARN', `Pre-update backup warning: ${e.message}`);
     }
 
-    const openError = await shell.openPath(targetPath);
-    if (openError) {
-      log('ERROR', `Failed to launch installer: ${openError}`);
-      return { success: false, error: `کێشە لە دەستپێکردنی تەنسیبەکە ڕوویدا: ${openError}` };
-    }
+    try {
+      // Launch installer detached so it runs independently
+      const child = spawn(targetPath, [], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+      log('INFO', `Installer launched successfully with PID: ${child.pid}. Automatically quitting app...`);
 
-    return { success: true, filePath: targetPath };
+      // Quit app cleanly so installer can upgrade seamlessly
+      setTimeout(() => {
+        app.quit();
+      }, 250);
+
+      return { success: true, filePath: targetPath };
+    } catch (launchErr: any) {
+      log('WARN', `spawn failed, falling back to shell.openPath: ${launchErr.message}`);
+      const openError = await shell.openPath(targetPath);
+      if (openError) {
+        log('ERROR', `Failed to launch installer: ${openError}`);
+        return { success: false, error: `کێشە لە دەستپێکردنی تەنسیبەکە ڕوویدا: ${openError}` };
+      }
+      setTimeout(() => {
+        app.quit();
+      }, 400);
+      return { success: true, filePath: targetPath };
+    }
   } catch (err: any) {
     log('ERROR', `Update download error: ${err.message}`);
     return { success: false, error: `کێشە لە داونلۆدکردنی پەڕگەکە ڕوویدا: ${err.message}` };
