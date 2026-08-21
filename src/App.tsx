@@ -1333,36 +1333,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* ١.٣ پشکنینی وەشانی نوێ و ئەپدەیت */}
-          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/40 transition-colors rounded-xl">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
-                <ArrowPathIcon className={`w-4 h-4 ${isCheckingUpdate ? 'animate-spin text-emerald-600' : ''}`} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-slate-800">نوێکردنەوەی بەرنامە (Software Updates)</h4>
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200/80">
-                    v{APP_CONFIG.CURRENT_VERSION}
-                  </span>
-                  {updateCheckResult?.hasUpdate && (
-                    <span className="text-[9px] font-black px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded animate-pulse">
-                      وەشانی نوێ بەردەستە!
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">پشکنینی ئۆتۆماتیکی لە ڕێگەی کۆگای فەرمی GitHub</p>
-              </div>
-            </div>
-            <button
-              onClick={() => handleCheckForUpdates(false)}
-              disabled={isCheckingUpdate}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
-            >
-              <ArrowPathIcon className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-              <span>{isCheckingUpdate ? 'پشکنین دەکرێت...' : 'پشکنینی نوێکارییەکان'}</span>
-            </button>
-          </div>
         </div>
       </div>
 
