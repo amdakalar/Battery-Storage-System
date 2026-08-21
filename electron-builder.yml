@@ -1,0 +1,107 @@
+# electron-builder configuration
+# Battery Storage Management System — Windows Production Release
+
+appId: com.ahmed.battery.storagesystem
+productName: Battery Storage System
+copyright: "Copyright © 2026 Ahmed M. Salih. All rights reserved."
+
+# ─── Directories ─────────────────────────────────────────────────────────────
+directories:
+  output: release
+  buildResources: build-resources
+
+# ─── Files to include in the ASAR archive ────────────────────────────────────
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - "!**/node_modules/**/*"
+
+npmRebuild: false
+nodeGypRebuild: false
+
+# ─── Extra Resources (copied OUTSIDE the ASAR — accessible via process.resourcesPath) ──
+extraResources:
+  - from: public/drone_battery_app_icon.ico
+    to: icons/drone_battery_app_icon.ico
+  - from: public/drone_battery_app_icon.png
+    to: icons/drone_battery_app_icon.png
+  - from: public/app.db
+    to: app.db
+
+# ─── ASAR packaging ──────────────────────────────────────────────────────────
+asar: true
+# sql-wasm.wasm must be unpacked from ASAR so the WebAssembly loader can read it
+asarUnpack:
+  - "dist/**/*.wasm"
+
+# Disable ASAR integrity verification — prevents electron-builder from needing
+# winCodeSign (which requires Windows Developer Mode / symlink privilege)
+# This is safe for unsigned apps without a code signing certificate.
+electronUpdaterCompatibility: ">=2.16"
+
+# ─── Compression ─────────────────────────────────────────────────────────────
+compression: normal
+
+# ─── Hooks ───────────────────────────────────────────────────────────────────
+afterPack: scripts/after-pack.js
+
+# ─── Windows ─────────────────────────────────────────────────────────────────
+win:
+  icon: public/drone_battery_app_icon.ico
+  executableName: BatteryStorageSystem
+  requestedExecutionLevel: asInvoker
+  verifyUpdateCodeSignature: false
+  forceCodeSigning: false
+  # Disable ASAR integrity resource edit (prevents winCodeSign failure — afterPack handles rcedit icon injection instead)
+  signAndEditExecutable: false
+  # Target: NSIS installer x64 only
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+# ─── NSIS Installer configuration ────────────────────────────────────────────
+nsis:
+  # Show installer wizard (not one-click)
+  oneClick: false
+  # Install per-user by default (no UAC required if perMachine is false)
+  perMachine: false
+  # Allow user to choose installation directory
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  # Icon for installer and uninstaller executables
+  installerIcon: public/drone_battery_app_icon.ico
+  uninstallerIcon: public/drone_battery_app_icon.ico
+  installerHeaderIcon: public/drone_battery_app_icon.ico
+  # Desktop shortcut icon
+  shortcutName: Battery Storage System
+  # Create shortcuts
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  # Launch app after installation
+  runAfterFinish: true
+  # Keep user data (localStorage, logs) on uninstall
+  deleteAppDataOnUninstall: false
+  # Artifact file name pattern
+  artifactName: "${productName}-${version}-Setup-${arch}.exe"
+
+# ─── Portable configuration ───────────────────────────────────────────────────
+portable:
+  artifactName: "${productName}-${version}-Portable-${arch}.exe"
+  requestExecutionLevel: user
+
+# ─── Auto-Updater publish configuration (disabled — ready for future) ────────
+# To enable auto-updates, uncomment and configure your update server:
+#
+# publish:
+#   - provider: github
+#     owner: your-github-username
+#     repo: your-repo-name
+#     private: true
+#   - provider: s3
+#     bucket: your-s3-bucket
+#
+# Then in electron/main.ts, uncomment the autoUpdater section.
+
+publish: null

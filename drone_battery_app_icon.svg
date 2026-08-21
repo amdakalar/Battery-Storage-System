@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Clean App Canvas Background with Soft Rounded Corners -->
+    <rect width="512" height="512" rx="108" fill="#FFFFFF"/>
+    
+    <!-- Main Icon Elements in Solid Deep Royal Blue -->
+    <g fill="#0B4F94" stroke="#0B4F94">
+        <!-- Connecting Diagonal Arms -->
+        <line x1="144" y1="144" x2="208" y2="208" stroke-width="18" stroke-linecap="round"/>
+        <line x1="368" y1="144" x2="304" y2="208" stroke-width="18" stroke-linecap="round"/>
+        <line x1="144" y1="368" x2="208" y2="304" stroke-width="18" stroke-linecap="round"/>
+        <line x1="368" y1="368" x2="304" y2="304" stroke-width="18" stroke-linecap="round"/>
+
+        <!-- Battery Top Terminal Cap -->
+        <path d="M232 144 H280 V162 C280 165 277 168 274 168 H238 C235 168 232 165 232 162 Z" stroke="none"/>
+
+        <!-- Battery Main Frame (Outline) -->
+        <rect x="196" y="164" width="120" height="184" rx="24" fill="none" stroke-width="18"/>
+
+        <!-- Lightning Bolt Icon Inside Battery -->
+        <path d="M264 196 L230 258 H258 L246 320 L282 250 H254 L264 196 Z" stroke="none"/>
+
+        <!-- ROTOR HUBS & PROPELLER BLADES -->
+
+        <!-- Top-Left Rotor Hub (144, 144) -->
+        <g transform="translate(144, 144)">
+            <circle cx="0" cy="0" r="16" stroke="none"/>
+            <!-- Blade 1: -45 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(-45)" stroke="none"/>
+            <!-- Blade 2: 135 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(135)" stroke="none"/>
+        </g>
+
+        <!-- Top-Right Rotor Hub (368, 144) -->
+        <g transform="translate(368, 144)">
+            <circle cx="0" cy="0" r="16" stroke="none"/>
+            <!-- Blade 1: -135 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(-135)" stroke="none"/>
+            <!-- Blade 2: 45 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(45)" stroke="none"/>
+        </g>
+
+        <!-- Bottom-Left Rotor Hub (144, 368) -->
+        <g transform="translate(144, 368)">
+            <circle cx="0" cy="0" r="16" stroke="none"/>
+            <!-- Blade 1: -135 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(-135)" stroke="none"/>
+            <!-- Blade 2: 45 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(45)" stroke="none"/>
+        </g>
+
+        <!-- Bottom-Right Rotor Hub (368, 368) -->
+        <g transform="translate(368, 368)">
+            <circle cx="0" cy="0" r="16" stroke="none"/>
+            <!-- Blade 1: -45 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(-45)" stroke="none"/>
+            <!-- Blade 2: 135 deg -->
+            <path d="M 0 -5 L 35 -11 C 56 -14 70 -8 70 0 C 70 8 56 14 35 11 L 0 5 Z" transform="rotate(135)" stroke="none"/>
+        </g>
+    </g>
+</svg>

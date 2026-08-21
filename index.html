@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ckb" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="سیستەمی بەڕێوەبردنی ستۆرج — درۆن و باترییەکان" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' 'unsafe-inline' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:;"
+    />
+    <title>سیستەمی بەڕێوەبردنی ستۆرج</title>
+
+    <!-- App Icon -->
+    <link rel="icon" type="image/x-icon" href="./drone_battery_app_icon.ico" />
+    <link rel="alternate icon" type="image/svg+xml" href="./favicon.svg" />
+
+    <!--
+      Google Fonts — Noto Kufi Arabic (Kurdish support)
+      Falls back gracefully to system Arabic/UI fonts when offline.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /*
+       * Offline / fallback font stack.
+       * Noto Kufi Arabic loads from CDN when online.
+       * When offline, Kurdish text falls back gracefully to system fonts.
+       */
+      :root {
+        --font-kurdish: 'Noto Kufi Arabic', 'Segoe UI', 'Tahoma', 'Arial Unicode MS',
+          'Arabic Typesetting', system-ui, sans-serif;
+      }
+
+      /* Prevent FOUC (flash of unstyled content) */
+      html {
+        font-family: var(--font-kurdish);
+      }
+
+      /* Initial loading state — hidden by React once app mounts */
+      #root:empty::before {
+        content: '';
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        background: #f8fafc;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
