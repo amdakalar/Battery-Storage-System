@@ -1385,42 +1385,46 @@ export default function App() {
 
         <div className="p-5 space-y-5">
           {/* دوگمەکانی هاوردەکردن و هەناردەکردنی JSON */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/40 flex flex-col justify-between gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 transition-all">
               <div>
-                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ArrowDownTrayIcon className="w-3.5 h-3.5 text-slate-600" />
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                  </div>
                   <span>دەرهێنانی کۆپیی یەدەگ (Export JSON)</span>
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">
-                  پاشەکەوتکردنی هەموو باترییەکان و مێژووەکەی لە پەڕگەیەکی JSON
+                <p className="text-[11px] text-slate-500 mt-1.5 font-medium leading-relaxed">
+                  پاشەکەوتکردنی تەواوی باترییەکان، مێژوو و زانیارییەکان لە پەڕگەیەکی JSON
                 </p>
               </div>
               <button
                 onClick={handleExportData}
-                className="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-200 transition-all shadow-2xs flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
               >
-                <ArrowDownTrayIcon className="w-3.5 h-3.5 text-slate-500" />
-                <span>دەرهێنانی داتا</span>
+                <ArrowDownTrayIcon className="w-4 h-4 text-emerald-100" />
+                <span>دەرهێنانی داتا (Export)</span>
               </button>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/40 flex flex-col justify-between gap-3">
+            <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 transition-all">
               <div>
-                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ArrowUpTrayIcon className="w-3.5 h-3.5 text-slate-600" />
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-slate-200 text-slate-800 flex items-center justify-center shrink-0">
+                    <ArrowUpTrayIcon className="w-3.5 h-3.5" />
+                  </div>
                   <span>هێنانی کۆپیی یەدەگ (Import JSON)</span>
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">
-                  گەڕاندنەوەی داتاکان لە پەڕگەیەکی پێشتری JSON
+                <p className="text-[11px] text-slate-500 mt-1.5 font-medium leading-relaxed">
+                  گەڕاندنەوە و هاوردەکردنی داتاکان لە پەڕگەیەکی پێشتری JSON
                 </p>
               </div>
               <button
                 onClick={handleImportData}
-                className="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-200 transition-all shadow-2xs flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
               >
-                <ArrowUpTrayIcon className="w-3.5 h-3.5 text-slate-500" />
-                <span>هێنانی داتا</span>
+                <ArrowUpTrayIcon className="w-4 h-4 text-slate-200" />
+                <span>هێنانی داتا (Import)</span>
               </button>
             </div>
           </div>
