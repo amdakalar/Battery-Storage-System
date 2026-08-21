@@ -54,7 +54,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const handleStartDownload = async () => {
     if (!updateData.downloadUrl) {
-      setErrorMessage('لینکی داونلۆدکردن لە ریلیزی گیتهاپ نەدۆزرایەوە. تکایە دڵنیابەرەوە پەڕگەی Setup.exe دانراوە.');
+      setErrorMessage('لینکی داونلۆدکردنی ئاپدەیت نەدۆزرایەوە. تکایە دڵنیابەرەوە پەڕگەی Setup.exe دانراوە.');
       return;
     }
 
@@ -195,7 +195,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             <div className="flex items-center justify-between text-xs font-extrabold text-emerald-950">
               <span className="flex items-center gap-1.5">
                 <ArrowPathIcon className="w-4 h-4 text-emerald-700 animate-spin" />
-                <span>داونلۆدکردنی ئەپدەیت لە گیتهاپ...</span>
+                <span>داونلۆدکردنی ئاپدەیتى نوێ...</span>
               </span>
               <span className="font-mono">{progress.percent}%</span>
             </div>
@@ -208,7 +208,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             </div>
 
             {progress.total > 0 && (
-              <div className="text-[10px] text-emerald-800 font-bold text-left dir-ltr">
+              <div className="text-[10px] text-emerald-800 font-bold text-left" dir="ltr">
                 {formatBytes(progress.transferred)} / {formatBytes(progress.total)}
               </div>
             )}
