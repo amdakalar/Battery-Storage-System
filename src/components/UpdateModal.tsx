@@ -183,8 +183,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 <span className="font-mono font-bold text-slate-700 text-xs">v{updateData.currentVersion || '1.0.0'}</span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-slate-400 font-bold text-sm">
-                <span>➜</span>
+              <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-base">
+                <span>←</span>
               </div>
 
               <div className="text-left">
