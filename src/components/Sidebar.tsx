@@ -143,51 +143,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* ───── Navigation ───── */}
       <nav className={`flex-1 overflow-y-auto overflow-x-hidden py-3.5 ${isCollapsed ? 'px-2' : 'px-3'}`}>
-        {/* Update Notification Banner in Sidebar */}
-        {hasUpdate && (
-          <div className="mb-3">
-            {!isCollapsed ? (
-              <button
-                onClick={onOpenUpdateModal}
-                className="w-full p-2.5 rounded-xl text-right flex items-center justify-between gap-2 transition-all group"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.1) 100%)',
-                  border: '1px solid rgba(52, 211, 153, 0.35)',
-                }}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="relative flex h-2.5 w-2.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                  <div className="text-right min-w-0">
-                    <p className="text-xs font-black text-emerald-300 truncate">وەشانی نوێ بەردەستە!</p>
-                    <p className="text-[10px] text-slate-400 font-mono">v{latestVersion || 'New'}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-md font-black shrink-0 shadow-xs group-hover:bg-emerald-400 transition-colors">
-                  ئاپدەیت
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenUpdateModal}
-                title={`وەشانی نوێ بەردەستە (v${latestVersion || ''})`}
-                className="w-full flex items-center justify-center p-2.5 rounded-xl relative transition-all"
-                style={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(52, 211, 153, 0.35)',
-                }}
-              >
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-              </button>
-            )}
-          </div>
-        )}
-
         <ul className="space-y-1">
           {navigationItems.map((item) => {
             const isActive = activeView === item.id;
@@ -273,25 +228,83 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </ul>
       </nav>
 
+      {/* ───── Bottom Update Notification (Minimal & Integrated) ───── */}
+      {hasUpdate && (
+        <div className={`shrink-0 ${isCollapsed ? 'px-2 pb-2' : 'px-3 pb-2'}`}>
+          {!isCollapsed ? (
+            <button
+              onClick={onOpenUpdateModal}
+              className="w-full p-2.5 rounded-xl text-right flex items-center justify-between gap-2.5 transition-all group cursor-pointer"
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(52, 211, 153, 0.22)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(52, 211, 153, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(52, 211, 153, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.borderColor = 'rgba(52, 211, 153, 0.22)';
+              }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <div className="text-right min-w-0">
+                  <p className="text-[11px] font-bold text-slate-200 group-hover:text-emerald-300 transition-colors truncate">
+                    وەشانی نوێ بەردەستە
+                  </p>
+                  <p className="text-[9.5px] text-slate-400 font-mono">v{latestVersion || 'New'}</p>
+                </div>
+              </div>
+              <span
+                className="text-[10px] text-emerald-300 font-bold px-2 py-0.5 rounded-md shrink-0 transition-colors"
+                style={{
+                  background: 'rgba(52, 211, 153, 0.12)',
+                  border: '1px solid rgba(52, 211, 153, 0.25)',
+                }}
+              >
+                ئاپدەیت
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenUpdateModal}
+              title={`وەشانی نوێ بەردەستە (v${latestVersion || ''})`}
+              className="w-full flex items-center justify-center p-2.5 rounded-xl transition-all cursor-pointer group"
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(52, 211, 153, 0.1)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)')}
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ───── Bottom version strip ───── */}
       {!isCollapsed && (
         <div
           onClick={hasUpdate ? onOpenUpdateModal : undefined}
-          className={`px-4 py-3 shrink-0 flex items-center justify-between ${hasUpdate ? 'cursor-pointer hover:bg-slate-800/40 transition-colors' : ''}`}
+          className={`px-4 py-2.5 shrink-0 flex items-center justify-between ${hasUpdate ? 'cursor-pointer hover:bg-slate-800/40 transition-colors' : ''}`}
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
           title={hasUpdate ? 'کرتە بکە بۆ نوێکردنەوەی بەرنامە' : `وەشانی ئێستا: v${APP_CONFIG.CURRENT_VERSION}`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className="text-[10px] font-mono tracking-tight" style={{ color: '#94a3b8' }}>
+            <p className="text-[10px] font-mono tracking-tight" style={{ color: '#64748b' }}>
               v{APP_CONFIG.CURRENT_VERSION} — Battery Storage System
             </p>
-            {hasUpdate && (
-              <span className="text-[9px] font-bold font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
-                NEW
-              </span>
-            )}
           </div>
-          <span className={`w-1.5 h-1.5 rounded-full ${hasUpdate ? 'bg-amber-400 animate-ping' : 'bg-emerald-400/80 shadow-xs shadow-emerald-400/50'}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${hasUpdate ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
         </div>
       )}
     </div>
