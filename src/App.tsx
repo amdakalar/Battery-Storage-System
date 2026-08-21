@@ -1270,14 +1270,14 @@ export default function App() {
          ═══════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {/* Section Header */}
-        <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between">
+        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-slate-700/50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs shrink-0">
-              <Cog6ToothIcon className="w-4 h-4 text-slate-700" />
+            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
+              <Cog6ToothIcon className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xs font-extrabold text-slate-900 leading-tight">ڕێکخستنە گشتییەکان (General Preferences)</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">هەڵبژاردنی تایبەتمەندییە سەرەکییەکان، دەنگ و بەشەکان</p>
+              <h3 className="text-xs font-black text-white tracking-wide leading-tight">ڕێکخستنە گشتییەکان (General Preferences)</h3>
+              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">هەڵبژاردنی تایبەتمەندییە سەرەکییەکان، دەنگ و بەشەکان</p>
             </div>
           </div>
         </div>
@@ -1341,14 +1341,14 @@ export default function App() {
          ═══════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {/* Section Header */}
-        <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-200/80 flex items-center justify-between">
+        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-slate-700/50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs shrink-0">
-              <ArrowDownTrayIcon className="w-4 h-4 text-slate-700" />
+            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
+              <ArrowDownTrayIcon className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xs font-extrabold text-slate-900 leading-tight">بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data & Backup)</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-medium">دەرهێنان، هاوردەکردن و گەڕاندنەوەی مێژووی باترییەکان</p>
+              <h3 className="text-xs font-black text-white tracking-wide leading-tight">بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data & Backup)</h3>
+              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">دەرهێنان، هاوردەکردن و گەڕاندنەوەی مێژووی باترییەکان</p>
             </div>
           </div>
         </div>
@@ -1509,6 +1509,19 @@ export default function App() {
           گرووپی ٣: ناوچەی مەترسیدار و سڕینەوە (Danger Zone)
          ═══════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white rounded-2xl border border-rose-200/90 shadow-2xs overflow-hidden">
+        {/* Section Header */}
+        <div className="px-5 py-3.5 bg-rose-50/80 border-b border-rose-200/80 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0">
+              <ExclamationTriangleIcon className="w-4 h-4 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-rose-900 leading-tight">ناوچەی مەترسیدار (Danger Zone)</h3>
+              <p className="text-[10.5px] text-rose-600 font-medium">کردارە هەستیار و سڕینەوە سەرەکییەکان</p>
+            </div>
+          </div>
+        </div>
+
         <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/70 flex items-center justify-center shrink-0">
