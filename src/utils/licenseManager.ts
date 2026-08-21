@@ -99,133 +99,48 @@ function saveLicenseState(state: LicenseState): void {
 }
 
 /**
- * Get current license state (initializes 6-month trial on first launch)
+ * Get current license state (Permanently Lifetime for all users)
  */
 export function getLicenseState(): LicenseState {
   const todayISO = new Date().toISOString().split('T')[0];
-
-  try {
-    const raw = localStorage.getItem(LICENSE_STORAGE_KEY);
-    if (raw) {
-      const state: LicenseState = JSON.parse(raw);
-      
-      // Clock Rollback Tamper Detection
-      let isTampered = false;
-      if (state.lastCheckDate && todayISO < state.lastCheckDate && state.licenseType !== 'LIFETIME') {
-        isTampered = true;
-      }
-
-      const daysLeft = state.expirationDate ? calculateDaysLeft(state.expirationDate) : 99999;
-      const isExpired = isTampered || (state.licenseType !== 'LIFETIME' && daysLeft <= 0);
-
-      const updated: LicenseState = {
-        ...state,
-        daysRemaining: Math.max(0, daysLeft),
-        isExpired,
-        lastCheckDate: !isTampered && todayISO > (state.lastCheckDate || '') ? todayISO : state.lastCheckDate || todayISO,
-      };
-
-      saveLicenseState(updated);
-      return updated;
-    }
-  } catch (e) {
-    console.error('Error reading license state:', e);
-  }
-
-  // Initial First Launch Setup: 6 Months Free Trial (180 Days)
   const hardwareId = generateHardwareId();
-  const expirationDate = addDaysToDate(todayISO, 180);
 
-  const initialState: LicenseState = {
-    isActivated: false,
-    licenseType: 'TRIAL_6M',
+  const lifetimeState: LicenseState = {
+    isActivated: true,
+    licenseType: 'LIFETIME',
     firstLaunchDate: todayISO,
-    expirationDate,
+    expirationDate: null,
     hardwareId,
-    daysRemaining: 180,
+    daysRemaining: 99999,
     isExpired: false,
+    activationCodeUsed: 'LIFETIME-PERMANENT',
+    activatedAt: todayISO,
   };
 
-  saveLicenseState(initialState);
-  return initialState;
+  try {
+    saveLicenseState(lifetimeState);
+  } catch {
+    // Ignore fallback errors
+  }
+
+  return lifetimeState;
 }
 
 /**
- * Validate and apply activation code (Requires code 3029059 or matching patterns)
+ * Validate and apply activation code (Always lifetime active)
  */
 export function applyActivationCode(
-  rawCode: string,
-  targetType?: LicenseType
+  _rawCode?: string,
+  _targetType?: LicenseType
 ): {
   success: boolean;
   message: string;
   updatedState?: LicenseState;
 } {
-  const code = rawCode.trim().toUpperCase().replace(/\s+/g, '');
-  if (!code) {
-    return { success: false, message: 'تکایە کۆدی ئەکتیڤکردن / ئادمین بنووسە.' };
-  }
-
-  const currentState = getLicenseState();
-  const todayISO = new Date().toISOString().split('T')[0];
-
-  // Verify Admin Code 3029059 or code starting with 302
-  const isValidAdminCode = code === ADMIN_CODE || code.includes('3029059') || code.startsWith('302');
-
-  if (!isValidAdminCode) {
-    return {
-      success: false,
-      message: 'کۆدی ئەکتیڤکردن / ئادمین هەڵەیە. تکایە کۆدی ڕاست بگەڕێنەوە.',
-    };
-  }
-
-  // Determine target license category (6 Months, 1 Year, or Lifetime)
-  let selectedType: LicenseType = targetType || 'LIFETIME';
-
-  if (!targetType) {
-    if (code.includes('6M') || code.includes('6MONTH') || code.endsWith('-6')) {
-      selectedType = 'CODE_6M';
-    } else if (code.includes('1Y') || code.includes('1YEAR') || code.endsWith('-1')) {
-      selectedType = 'CODE_1Y';
-    } else if (code.includes('LIFE') || code.includes('PERM') || code === ADMIN_CODE) {
-      selectedType = 'LIFETIME';
-    }
-  }
-
-  let newExpirationDate: string | null = null;
-  let successMsg = '';
-
-  const baseDate = currentState.expirationDate && calculateDaysLeft(currentState.expirationDate) > 0
-    ? currentState.expirationDate
-    : todayISO;
-
-  if (selectedType === 'LIFETIME') {
-    newExpirationDate = null;
-    successMsg = 'سیستەمەکەت بە سەرکەوتوویی بۆ هەتاهەتایی (Lifetime) چالاککرا!';
-  } else if (selectedType === 'CODE_1Y') {
-    newExpirationDate = addDaysToDate(baseDate, 365);
-    successMsg = 'سیستەمەکەت بە سەرکەوتوویی بۆ ماوەی ١ ساڵ (٣٦٥ ڕۆژ) چالاککرا!';
-  } else if (selectedType === 'CODE_6M') {
-    newExpirationDate = addDaysToDate(baseDate, 180);
-    successMsg = 'سیستەمەکەت بە سەرکەوتوویی بۆ ماوەی ٦ مانگ (١٨٠ ڕۆژ) چالاککرا!';
-  }
-
-  const updatedState: LicenseState = {
-    ...currentState,
-    isActivated: true,
-    licenseType: selectedType,
-    expirationDate: newExpirationDate,
-    daysRemaining: newExpirationDate ? calculateDaysLeft(newExpirationDate) : 99999,
-    isExpired: false,
-    activationCodeUsed: code,
-    activatedAt: new Date().toISOString(),
-  };
-
-  saveLicenseState(updatedState);
-
+  const lifetimeState = getLicenseState();
   return {
     success: true,
-    message: successMsg,
-    updatedState,
+    message: 'سیستەمەکەت بە سەرکەوتوویی بۆ هەتاهەتایی (Lifetime) چالاککراوە!',
+    updatedState: lifetimeState,
   };
 }
