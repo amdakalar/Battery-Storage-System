@@ -5,12 +5,16 @@
 
 import React from 'react';
 import { APP_CONFIG } from '../constants/appConfig';
+import { User } from '../types';
 import {
   HomeIcon,
   BoltIcon,
   ChartBarIcon,
   ClockIcon,
   Cog6ToothIcon,
+  UserGroupIcon,
+  ArrowRightOnRectangleIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -27,6 +31,10 @@ interface SidebarProps {
   hasUpdate?: boolean;
   latestVersion?: string;
   onOpenUpdateModal?: () => void;
+  currentUser?: User | null;
+  onOpenAdminModal?: () => void;
+  pendingUsersCount?: number;
+  onLogout?: () => void;
 }
 
 const navigationItems = [
@@ -67,6 +75,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasUpdate,
   latestVersion,
   onOpenUpdateModal,
+  currentUser,
+  onOpenAdminModal,
+  pendingUsersCount,
+  onLogout,
 }) => {
   return (
     <div
@@ -226,7 +238,83 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </ul>
+
+        {/* ───── Admin Management Button ───── */}
+        {currentUser?.role === 'ADMIN' && (
+          <div className="mt-4 pt-3 border-t border-white/5">
+            <button
+              onClick={onOpenAdminModal}
+              title={isCollapsed ? 'بەڕێوەبردنی بەکارهێنەران' : undefined}
+              className={`w-full flex items-center rounded-xl transition-all duration-200 cursor-pointer group ${
+                isCollapsed ? 'justify-center p-3' : 'px-3.5 py-2.5 gap-3'
+              }`}
+              style={{
+                background: 'rgba(99, 102, 241, 0.08)',
+                border: '1px solid rgba(99, 102, 241, 0.2)',
+              }}
+            >
+              <div className="w-6 h-6 shrink-0 flex items-center justify-center text-indigo-400 group-hover:text-indigo-300">
+                <UserGroupIcon className="w-5 h-5" />
+              </div>
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-[12.5px] font-bold text-slate-200 group-hover:text-indigo-200 text-right">
+                    بەڕێوەبردنی بەکارهێنەران
+                  </span>
+                  {pendingUsersCount !== undefined && pendingUsersCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 shrink-0 animate-pulse">
+                      {pendingUsersCount} نوێ
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </nav>
+
+      {/* ───── User Profile & Logout Strip ───── */}
+      {currentUser && (
+        <div className={`shrink-0 ${isCollapsed ? 'px-2 pb-2' : 'px-3 pb-2'}`}>
+          <div
+            className={`p-2 rounded-2xl flex items-center justify-between gap-2 transition-all ${
+              isCollapsed ? 'justify-center' : ''
+            }`}
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <div className={`flex items-center gap-2 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
+              <div
+                className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center font-black text-xs ${
+                  currentUser.role === 'ADMIN'
+                    ? 'bg-gradient-to-tr from-indigo-500 to-purple-600 text-white'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                }`}
+              >
+                {currentUser.fullName.charAt(0)}
+              </div>
+              {!isCollapsed && (
+                <div className="min-w-0 text-right">
+                  <p className="text-[11.5px] font-bold text-slate-200 truncate">{currentUser.fullName}</p>
+                  <p className="text-[9.5px] text-slate-400 font-mono" dir="ltr">@{currentUser.username}</p>
+                </div>
+              )}
+            </div>
+
+            {!isCollapsed && (
+              <button
+                onClick={onLogout}
+                title="چوونەدەرەوە"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ───── Bottom Update Notification (Minimal & Integrated) ───── */}
       {hasUpdate && (

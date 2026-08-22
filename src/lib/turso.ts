@@ -31,8 +31,22 @@ export async function initTursoTables(): Promise<void> {
   const client = getTursoClient();
 
   await client.batch([
+    `CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      fullName TEXT NOT NULL,
+      passwordHash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'USER',
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      createdAt TEXT NOT NULL,
+      approvedBy TEXT,
+      approvedAt TEXT,
+      lastLoginAt TEXT
+    );`,
+
     `CREATE TABLE IF NOT EXISTS batteries (
       id TEXT PRIMARY KEY,
+      userId TEXT,
       name TEXT NOT NULL,
       category TEXT NOT NULL,
       lastChargeDate TEXT NOT NULL,
@@ -48,6 +62,7 @@ export async function initTursoTables(): Promise<void> {
     `CREATE TABLE IF NOT EXISTS charge_history (
       id TEXT PRIMARY KEY,
       batteryId TEXT NOT NULL,
+      userId TEXT,
       chargeDate TEXT NOT NULL,
       chargeTime TEXT,
       daysSincePrevious INTEGER,
@@ -69,7 +84,22 @@ export async function initTursoTables(): Promise<void> {
       meta_json TEXT
     );`,
 
+    `CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);`,
+    `CREATE INDEX IF NOT EXISTS idx_batteries_userId ON batteries (userId);`,
     `CREATE INDEX IF NOT EXISTS idx_charge_history_batteryId ON charge_history (batteryId);`,
     `CREATE INDEX IF NOT EXISTS idx_batteries_createdAt ON batteries (createdAt DESC);`,
   ]);
+
+  // Safe incremental migrations for existing tables
+  try {
+    await client.execute(`ALTER TABLE batteries ADD COLUMN userId TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    await client.execute(`ALTER TABLE charge_history ADD COLUMN userId TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
 }

@@ -5,9 +5,25 @@
 
 export type StatusType = 'ON_TIME' | 'EARLY_WARNING' | 'TIME_TO_CHARGE' | 'OVERDUE';
 
+export type UserRole = 'ADMIN' | 'USER';
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'BLOCKED';
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  lastLoginAt?: string;
+}
+
 export interface ChargeRecord {
   id: string;
   batteryId: string;
+  userId?: string;
   chargeDate: string; // ISO format string YYYY-MM-DD
   chargeTime?: string; // HH:mm format
   daysSincePrevious?: number;
@@ -17,6 +33,7 @@ export interface ChargeRecord {
 
 export interface Battery {
   id: string;
+  userId?: string;
   name: string;
   category: 'DRONE' | 'CAR' | 'SOLAR' | 'UPS' | 'SCOOTER' | 'GENERAL' | string;
   lastChargeDate: string; // ISO YYYY-MM-DD

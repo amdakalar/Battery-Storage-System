@@ -47,9 +47,13 @@ import { UpdateModal } from './components/UpdateModal';
 import { CategoryManagerModal } from './components/CategoryManagerModal';
 import { CustomDialog, DialogConfig } from './components/CustomDialog';
 import { getLicenseState } from './utils/licenseManager';
-import { LicenseState, UpdateCheckResult } from './types';
+import { LicenseState, UpdateCheckResult, User } from './types';
 import { DroneCategoryInfo, loadCategories, addCustomCategory, updateCategory, deleteCustomCategory, getNormalizedCategory, DEFAULT_CATEGORY } from './constants/categories';
 import { APP_CONFIG } from './constants/appConfig';
+import { LoginPage } from './components/LoginPage';
+import { AdminUsersModal } from './components/AdminUsersModal';
+import { getPendingUsersCountAction } from './actions/authActions';
+import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction } from './actions/batteryActions';
 import {
   BoltIcon,
   InformationCircleIcon,
@@ -100,6 +104,33 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [historyCategoryFilter, setHistoryCategoryFilter] = useState<string>('ALL');
+
+  // User Authentication & RBAC State
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('storage_auth_user');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return null;
+  });
+  const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
+  const [pendingUsersCount, setPendingUsersCount] = useState(0);
+
+  const refreshPendingCount = async () => {
+    if (currentUser && currentUser.role === 'ADMIN') {
+      try {
+        const count = await getPendingUsersCountAction(currentUser.id);
+        setPendingUsersCount(count);
+      } catch (e) {}
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('storage_auth_user');
+  };
 
   // License & Activation State (6 Months Trial / Lockout)
   const [licenseState, setLicenseState] = useState<LicenseState>(getLicenseState());
@@ -216,17 +247,27 @@ export default function App() {
 
   // Load saved battery data & silently check for GitHub release updates on startup
   useEffect(() => {
+    if (!currentUser) return;
     let isMounted = true;
     (async () => {
       try {
+        const cloudBatteries = await getBatteriesAction(currentUser.id, currentUser.role === 'ADMIN');
+        if (isMounted && cloudBatteries && cloudBatteries.length >= 0) {
+          setBatteries(cloudBatteries);
+          saveBatteries(cloudBatteries);
+        }
+      } catch (error) {
+        console.error('Error loading batteries from Turso:', error);
         const loaded = await loadBatteriesAsync();
         if (isMounted) {
           setBatteries(loaded);
         }
-      } catch (error) {
-        console.error('Error loading batteries on startup:', error);
       }
     })();
+
+    if (currentUser.role === 'ADMIN') {
+      refreshPendingCount();
+    }
 
     // Auto-check for updates silently after 2 seconds
     const timer = setTimeout(async () => {
@@ -247,7 +288,7 @@ export default function App() {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, []);
+  }, [currentUser]);
 
   // Audio effect generator using Web Audio API for feedback (console warning safe)
   const playSoundEffect = (type: 'success' | 'alert') => {
@@ -316,6 +357,16 @@ export default function App() {
     const updated = recordBatteryCharge(batteryId, todayToUse, 'ستۆرجکرا لەم ڕێکەوتەدا');
     setBatteries(updated);
     playSoundEffect('success');
+    recordChargeAction(
+      {
+        id: 'hist_' + Date.now(),
+        batteryId,
+        userId: currentUser?.id,
+        chargeDate: todayToUse,
+        notes: 'ستۆرجکرا لەم ڕێکەوتەدا',
+      },
+      currentUser?.id
+    ).catch(() => {});
   };
 
   // Action: Custom Storage Date
@@ -323,6 +374,16 @@ export default function App() {
     const updated = recordBatteryCharge(batteryId, customDate, notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو');
     setBatteries(updated);
     playSoundEffect('success');
+    recordChargeAction(
+      {
+        id: 'hist_' + Date.now(),
+        batteryId,
+        userId: currentUser?.id,
+        chargeDate: customDate,
+        notes: notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو',
+      },
+      currentUser?.id
+    ).catch(() => {});
   };
 
   // Action: Add New Battery
@@ -336,9 +397,29 @@ export default function App() {
     storagePercentage?: number;
     cells?: any;
   }) => {
-    const updated = addBattery(data);
+    const today = getTodayISODate();
+    const id = 'bat_' + Date.now();
+    const newBattery: Battery = {
+      ...data,
+      id,
+      userId: currentUser?.id,
+      createdAt: today,
+      history: [
+        {
+          id: 'hist_init_' + Date.now(),
+          batteryId: id,
+          userId: currentUser?.id,
+          chargeDate: data.lastChargeDate || today,
+          notes: 'دروستکردنی ڕیکۆرد و یەکەم ستۆرج',
+        },
+      ],
+    };
+
+    const updated = [newBattery, ...batteries];
     setBatteries(updated);
+    saveBatteries(updated);
     playSoundEffect('success');
+    saveBatteryAction(newBattery, currentUser?.id).catch(() => {});
   };
 
   // Custom In-App Alert Dialog Trigger
@@ -1725,6 +1806,17 @@ export default function App() {
     );
   };
 
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          localStorage.setItem('storage_auth_user', JSON.stringify(user));
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dir-rtl flex">
       
@@ -1744,6 +1836,10 @@ export default function App() {
           hasUpdate={!!updateCheckResult?.hasUpdate}
           latestVersion={updateCheckResult?.latestVersion}
           onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+          currentUser={currentUser}
+          onOpenAdminModal={() => setIsAdminUsersModalOpen(true)}
+          pendingUsersCount={pendingUsersCount}
+          onLogout={handleLogout}
         />
       </div>
 
@@ -2176,6 +2272,15 @@ export default function App() {
         config={dialogConfig}
         onClose={() => setDialogConfig(null)}
       />
+
+      {currentUser && currentUser.role === 'ADMIN' && (
+        <AdminUsersModal
+          isOpen={isAdminUsersModalOpen}
+          onClose={() => setIsAdminUsersModalOpen(false)}
+          currentAdmin={currentUser}
+          onUserListChange={refreshPendingCount}
+        />
+      )}
 
     </div>
   );
