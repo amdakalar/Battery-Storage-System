@@ -1,5 +1,8 @@
 {
-  "name": "battery-storage-system",
+  "name": "storagekrd",
   "framework": "nextjs",
-  "buildCommand": "npm run build:web"
+  "buildCommand": "npm run build:web",
+  "alias": [
+    "storagekrd.vercel.app"
+  ]
 }
