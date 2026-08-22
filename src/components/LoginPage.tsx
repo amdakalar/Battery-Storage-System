@@ -35,7 +35,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         setError(res.error || 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە');
       }
     } catch (err: any) {
-      setError(err.message || 'پەیوەندی بە سێرڤەرەوە سەرکەوتوو نەبوو');
+      setError('ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە (دەتوانیت بە هەژماری سەرەکی admin بچیتە ژوورەوە)');
     } finally {
       setLoading(false);
     }

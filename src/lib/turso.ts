@@ -281,7 +281,7 @@ async function executeWebLocalQuery(stmt: any): Promise<{ rows: any[]; columns: 
   return { rows: [], columns: [] };
 }
 
-function createWebLocalClient(): Client {
+export function createWebLocalClient(): Client {
   return {
     async execute(stmt: any): Promise<any> {
       return await executeWebLocalQuery(stmt);
