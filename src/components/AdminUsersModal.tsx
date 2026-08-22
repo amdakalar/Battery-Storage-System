@@ -7,6 +7,7 @@ import {
   updateUserStatusAction,
   updateUserRoleAction,
   deleteUserAction,
+  createUserByAdminAction,
 } from '../actions/authActions';
 import {
   XMarkIcon,
@@ -18,6 +19,11 @@ import {
   ClockIcon,
   MagnifyingGlassIcon,
   ArrowPathIcon,
+  UserPlusIcon,
+  PlusIcon,
+  LockClosedIcon,
+  UserIcon,
+  IdentificationIcon,
 } from '@heroicons/react/24/outline';
 
 interface AdminUsersModalProps {
@@ -39,6 +45,14 @@ export function AdminUsersModal({
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'ACTIVE' | 'BLOCKED'>('ALL');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // New User Form State
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newFullName, setNewFullName] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<UserRole>('USER');
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -62,6 +76,41 @@ export function AdminUsersModal({
 
   if (!isOpen) return null;
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    setMessage(null);
+
+    try {
+      const res = await createUserByAdminAction(currentAdmin.id, {
+        fullName: newFullName,
+        username: newUsername,
+        password: newPassword,
+        role: newRole,
+      });
+
+      if (res.success && res.user) {
+        setMessage({
+          type: 'success',
+          text: `بەکارهێنەر "${res.user.fullName}" بە سەرکەوتوویی دروستکرا و ڕاستەوخۆ چالاک کرا.`,
+        });
+        setNewFullName('');
+        setNewUsername('');
+        setNewPassword('');
+        setNewRole('USER');
+        setShowAddForm(false);
+        await fetchUsers();
+        onUserListChange?.();
+      } else {
+        setMessage({ type: 'error', text: res.error || 'هەڵەیەک ڕوویدا لە کاتی دروستکردن' });
+      }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'پەیوەندی سەرکەوتوو نەبوو' });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleStatusChange = async (targetUser: User, newStatus: UserStatus) => {
     setActionLoading(targetUser.id);
     setMessage(null);
@@ -70,7 +119,7 @@ export function AdminUsersModal({
       if (res.success) {
         setMessage({
           type: 'success',
-          text: newStatus === 'ACTIVE' ? `هەژماری "${targetUser.fullName}" بە سەرکەوتوویی پەسەندکرا` : `هەژماری "${targetUser.fullName}" ڕاگیرا`,
+          text: newStatus === 'ACTIVE' ? `هەژماری "${targetUser.fullName}" بە سەرکەوتوویی چالاک کرا` : `هەژماری "${targetUser.fullName}" ڕاگیرا`,
         });
         await fetchUsers();
         onUserListChange?.();
@@ -150,22 +199,46 @@ export function AdminUsersModal({
             </div>
             <div>
               <h2 className="text-lg font-black text-white flex items-center gap-2">
-                بەڕێوەبردنی بەکارهێنەران و دەسەڵاتەکان
+                بەڕێوەبردنی بەکارهێنەران
                 {pendingCount > 0 && (
                   <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
-                    {pendingCount} چاوەڕوانی پەسەندکردن
+                    {pendingCount} چاوەڕوان
                   </span>
                 )}
               </h2>
-              <p className="text-xs text-slate-400">پەسەندکردنی هەژمارە نوێیەکان و دیاریکردنی دەسەڵاتەکان</p>
+              <p className="text-xs text-slate-400">زیادکردنی کارمەند و دیاریکردنی دەسەڵاتەکان</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <XMarkIcon className="w-6 h-6" />
-          </button>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                showAddForm
+                  ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 font-black'
+              }`}
+            >
+              {showAddForm ? (
+                <>
+                  <XMarkIcon className="w-4 h-4" />
+                  داخستنی فۆرم
+                </>
+              ) : (
+                <>
+                  <UserPlusIcon className="w-4 h-4" />
+                  + زیادکردنی بەکارهێنەر
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Action feedback message */}
@@ -178,9 +251,88 @@ export function AdminUsersModal({
             }`}
           >
             <span>{message.text}</span>
-            <button onClick={() => setMessage(null)} className="text-xs opacity-70 hover:opacity-100">
+            <button onClick={() => setMessage(null)} className="text-xs opacity-70 hover:opacity-100 cursor-pointer">
               ✕
             </button>
+          </div>
+        )}
+
+        {/* Add New User Collapsible Form */}
+        {showAddForm && (
+          <div className="p-6 bg-slate-950/80 border-b border-slate-800 animate-slide-up">
+            <h3 className="text-xs font-black text-indigo-400 mb-3 flex items-center gap-1.5">
+              <UserPlusIcon className="w-4 h-4" />
+              فۆرمی تۆمارکردنی کارمەند / بەکارهێنەری نوێ لەلایەن بەڕێوەبەر
+            </h3>
+            <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">ناوی تەواو</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newFullName}
+                    onChange={(e) => setNewFullName(e.target.value)}
+                    placeholder="ناوی کارمەند..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 pl-8"
+                  />
+                  <IdentificationIcon className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">ناوی بەکارهێنەر (Username)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="username..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 pl-8 text-left dir-ltr"
+                    dir="ltr"
+                  />
+                  <UserIcon className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">وشەی نهێنی (Password)</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 pl-8 text-left dir-ltr"
+                    dir="ltr"
+                  />
+                  <LockClosedIcon className="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">دەسەڵات</label>
+                <div className="flex gap-2">
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as UserRole)}
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="USER">بەکارهێنەر (User)</option>
+                    <option value="ADMIN">بەڕێوەبەر (Admin)</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    {isCreating ? '...' : 'تۆمارکردن'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         )}
 
@@ -200,23 +352,15 @@ export function AdminUsersModal({
           <div className="flex gap-1.5 w-full sm:w-auto bg-slate-950 p-1 rounded-xl border border-slate-800">
             <button
               onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                 statusFilter === 'ALL' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
               هەموو ({users.length})
             </button>
             <button
-              onClick={() => setStatusFilter('PENDING')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                statusFilter === 'PENDING' ? 'bg-amber-500 text-slate-950 font-black' : 'text-amber-400 hover:text-amber-300'
-              }`}
-            >
-              چاوەڕوان ({pendingCount})
-            </button>
-            <button
               onClick={() => setStatusFilter('ACTIVE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                 statusFilter === 'ACTIVE' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -224,7 +368,7 @@ export function AdminUsersModal({
             </button>
             <button
               onClick={() => setStatusFilter('BLOCKED')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                 statusFilter === 'BLOCKED' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -331,7 +475,7 @@ export function AdminUsersModal({
                           className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
                         >
                           <CheckCircleIcon className="w-4 h-4" />
-                          پەسەندکردن
+                          چالاککردن
                         </button>
                       )}
 

@@ -5,12 +5,40 @@ import crypto from 'crypto';
 import { getTursoClient, initTursoTables } from '@/src/lib/turso';
 import { User, UserRole, UserStatus } from '@/src/types';
 
-// Auto-initialize tables
+// Auto-initialize tables and seed default admin
 let tablesInitialized = false;
 async function ensureTables() {
   if (!tablesInitialized) {
     await initTursoTables();
     tablesInitialized = true;
+  }
+
+  // Auto-seed initial admin if database has 0 users
+  try {
+    const client = getTursoClient();
+    const countRes = await client.execute(`SELECT COUNT(*) as count FROM users`);
+    if (Number(countRes.rows[0]?.count || 0) === 0) {
+      const defaultAdminPass = await hashPasswordBcrypt('admin');
+      const now = new Date().toISOString();
+      await client.execute({
+        sql: `INSERT INTO users (id, username, fullName, passwordHash, role, status, createdAt, approvedBy, approvedAt, lastLoginAt)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          'usr_admin_default',
+          'admin',
+          'بەڕێوەبەری سەرەکی (Admin)',
+          defaultAdminPass,
+          'ADMIN',
+          'ACTIVE',
+          now,
+          'SYSTEM',
+          now,
+          now,
+        ],
+      });
+    }
+  } catch (e) {
+    console.error('Error checking/seeding default admin:', e);
   }
 }
 
@@ -70,28 +98,36 @@ async function logActivity(
 }
 
 /**
- * Register a new user.
- * The very first user created in the database becomes an ACTIVE ADMIN.
- * All subsequent users are created as PENDING USERs awaiting Admin approval.
+ * Create a new user (Only by Admin)
  */
-export async function registerUserAction(data: {
-  username: string;
-  fullName: string;
-  password: string;
-}): Promise<{
-  success: boolean;
-  isFirstAdmin?: boolean;
-  isPending?: boolean;
-  user?: User;
-  error?: string;
-}> {
+export async function createUserByAdminAction(
+  adminUserId: string,
+  data: {
+    username: string;
+    fullName: string;
+    password: string;
+    role: UserRole;
+  }
+): Promise<{ success: boolean; user?: User; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
+    // Verify requester is ADMIN
+    const adminCheck = await client.execute({
+      sql: `SELECT role, fullName FROM users WHERE id = ? LIMIT 1`,
+      args: [adminUserId],
+    });
+
+    if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'ADMIN') {
+      return { success: false, error: 'تەنها بەڕێوەبەر (ئادمین) دەتوانێت بەکارهێنەری نوێ زیاد بکات' };
+    }
+
+    const adminName = String(adminCheck.rows[0].fullName || 'Admin');
     const username = data.username.trim().toLowerCase();
     const fullName = data.fullName.trim();
     const password = data.password;
+    const role: UserRole = data.role || 'USER';
 
     if (!username || username.length < 3) {
       return { success: false, error: 'ناوی بەکارهێنەر دەبێت کەمترین ۳ پیت بێت' };
@@ -113,13 +149,8 @@ export async function registerUserAction(data: {
       return { success: false, error: 'ئەم ناوی بەکارهێنەرە پێشتر تۆمارکراوە' };
     }
 
-    // Check total user count to see if this is the first user (Initial Admin)
-    const countRes = await client.execute(`SELECT COUNT(*) as count FROM users`);
-    const isFirstUser = Number(countRes.rows[0]?.count || 0) === 0;
-
     const id = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const role: UserRole = isFirstUser ? 'ADMIN' : 'USER';
-    const status: UserStatus = isFirstUser ? 'ACTIVE' : 'PENDING';
+    const status: UserStatus = 'ACTIVE';
     const createdAt = new Date().toISOString();
     const passwordHash = await hashPasswordBcrypt(password);
 
@@ -135,9 +166,9 @@ export async function registerUserAction(data: {
         role,
         status,
         createdAt,
-        isFirstUser ? 'SYSTEM' : null,
-        isFirstUser ? createdAt : null,
-        isFirstUser ? createdAt : null,
+        adminName,
+        createdAt,
+        null,
       ],
     });
 
@@ -148,35 +179,31 @@ export async function registerUserAction(data: {
       role,
       status,
       createdAt,
-      approvedBy: isFirstUser ? 'SYSTEM' : undefined,
-      approvedAt: isFirstUser ? createdAt : undefined,
-      lastLoginAt: isFirstUser ? createdAt : undefined,
+      approvedBy: adminName,
+      approvedAt: createdAt,
     };
 
-    // Log registration activity
     await logActivity(
-      'USER_REGISTER',
-      isFirstUser ? 'دروستکردنی یەکەم بەڕێوەبەری سەرەکی (Admin)' : 'خۆتۆمارکردنی بەکارهێنەری نوێ (چاوەڕوانی پەسەندکردن)',
+      'USER_APPROVE',
+      'زیادکردنی بەکارهێنەری نوێ لەلایەن ئادمین',
+      adminName,
+      adminUserId,
       fullName,
-      id,
-      `@${username}`,
-      `هەژماری نوێ دروستکرا لەگەڵ دەسەڵاتی ${role} و دۆخی ${status}`
+      `بەکارهێنەری نوێ "${fullName}" (@${username}) بە دەسەڵاتی ${role === 'ADMIN' ? 'ئادمین' : 'بەکارهێنەر'} دروستکرا و چالاک کرا`
     );
 
     return {
       success: true,
-      isFirstAdmin: isFirstUser,
-      isPending: !isFirstUser,
       user,
     };
   } catch (err: any) {
-    console.error('Error registering user:', err);
-    return { success: false, error: err.message || 'هەڵەیەک ڕوویدا لە کاتی تۆمارکردن' };
+    console.error('Error creating user by admin:', err);
+    return { success: false, error: err.message || 'هەڵەیەک ڕوویدا لە کاتی زیادکردنی بەکارهێنەر' };
   }
 }
 
 /**
- * Log in with username and password (using bcrypt verification)
+ * Log in with username and password
  */
 export async function loginUserAction(data: {
   username: string;
@@ -217,7 +244,7 @@ export async function loginUserAction(data: {
       return {
         success: false,
         isPending: true,
-        error: 'هەژمارەکەت تۆمارکراوە بەڵام چاوەڕوانی پەسەندکردنی بەڕێوەبەر (ئادمین) دەکات.',
+        error: 'هەژمارەکەت چاوەڕوانی چالاککردنی بەڕێوەبەر (ئادمین) دەکات.',
       };
     }
 
@@ -378,7 +405,7 @@ export async function updateUserStatusAction(
       });
       await logActivity(
         'USER_APPROVE',
-        'پەسەندکردنی هەژماری بەکارهێنەر',
+        'چالاککردنی هەژماری بەکارهێنەر',
         adminName,
         adminUserId,
         targetName,

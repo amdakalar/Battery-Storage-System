@@ -8,12 +8,18 @@ let tursoClient: Client | null = null;
  * - TURSO_DATABASE_URL (e.g. libsql://your-db-name.turso.io)
  * - TURSO_AUTH_TOKEN (Turso auth token)
  * 
- * Falls back to a local SQLite file (file:local.db) if no Turso URL is specified.
+ * Falls back to a local SQLite file in /tmp or local.db if no Turso URL is specified.
  */
 export function getTursoClient(): Client {
   if (tursoClient) return tursoClient;
 
-  const url = process.env.TURSO_DATABASE_URL || 'file:local.db';
+  // On Vercel serverless functions, the root filesystem is read-only, so SQLite fallback must be in /tmp
+  let defaultLocal = 'file:local.db';
+  if (process.env.VERCEL || process.env.TMPDIR || (process.platform === 'linux' && process.env.NODE_ENV === 'production')) {
+    defaultLocal = 'file:/tmp/local.db';
+  }
+
+  const url = process.env.TURSO_DATABASE_URL || defaultLocal;
   const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
 
   tursoClient = createClient({
