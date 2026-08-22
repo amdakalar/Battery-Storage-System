@@ -340,19 +340,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* ───── Bottom version strip ───── */}
-      {!isCollapsed && (
+      {!isCollapsed ? (
         <div
           onClick={hasUpdate ? onOpenUpdateModal : undefined}
           className={`px-4 py-2.5 shrink-0 flex items-center justify-between ${hasUpdate ? 'cursor-pointer hover:bg-slate-800/40 transition-colors' : ''}`}
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-          title={hasUpdate ? 'کرتە بکە بۆ نوێکردنەوەی بەرنامە' : `وەشانی ئێستا: v${APP_CONFIG.CURRENT_VERSION}`}
+          title={hasUpdate ? `وەشانی نوێ بەردەستە (v${latestVersion}) — کرتە بکە بۆ نوێکردنەوە` : `وەشانی ئێستا: v${APP_CONFIG.CURRENT_VERSION}`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className="text-[10px] font-mono tracking-tight" style={{ color: '#64748b' }}>
-              v{APP_CONFIG.CURRENT_VERSION} — Battery Storage System
+            <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/50">
+              v{APP_CONFIG.CURRENT_VERSION}
+            </span>
+            <p className="text-[10px] font-mono tracking-tight truncate" style={{ color: '#94a3b8' }}>
+              Battery Storage
             </p>
           </div>
-          <span className={`w-1.5 h-1.5 rounded-full ${hasUpdate ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+          <span className={`w-2 h-2 rounded-full ${hasUpdate ? 'bg-emerald-400 animate-ping' : 'bg-emerald-500/60'}`} />
+        </div>
+      ) : (
+        <div
+          onClick={hasUpdate ? onOpenUpdateModal : undefined}
+          className={`py-2 shrink-0 flex items-center justify-center ${hasUpdate ? 'cursor-pointer hover:bg-slate-800/40' : ''}`}
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          title={`وەشانی سیستەم: v${APP_CONFIG.CURRENT_VERSION}`}
+        >
+          <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-1 py-0.5 rounded border border-emerald-800/50">
+            {APP_CONFIG.CURRENT_VERSION}
+          </span>
         </div>
       )}
     </div>
