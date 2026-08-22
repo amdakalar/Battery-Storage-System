@@ -56,7 +56,7 @@ import { ChangelogView } from './components/ChangelogView';
 import { UsersManagementView } from './components/UsersManagementView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
-import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction, importBatteriesAction } from './actions/batteryActions';
+import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction, importBatteriesAction, clearAllBatteriesAction } from './actions/batteryActions';
 import {
   BoltIcon,
   InformationCircleIcon,
@@ -658,11 +658,29 @@ export default function App() {
   };
 
   // Action: Clear All System Data & Save Log
-  const handleClearAllData = (reason: string) => {
+  const handleClearAllData = async (reason: string) => {
     const res = clearAllSystemData(reason);
     setBatteries(res.batteries);
     setDeletionLogs(res.logs);
     playSoundEffect('alert');
+
+    // Also delete all batteries and charge history from Turso Cloud database!
+    try {
+      await clearAllBatteriesAction(
+        reason,
+        currentUser?.fullName || 'بەڕێوەبەر',
+        currentUser?.id,
+        currentUser?.role === 'ADMIN'
+      );
+      // Confirm clear
+      const synced = await getBatteriesAction();
+      if (Array.isArray(synced)) {
+        setBatteries(synced);
+        saveBatteries(synced);
+      }
+    } catch (err) {
+      console.error('Failed to clear batteries in cloud:', err);
+    }
   };
 
   // Action: Clear Deletion Logs
@@ -705,12 +723,19 @@ export default function App() {
   };
 
   // Action: Restore Single Deleted Data Log
-  const handleRestoreDeletedData = (logId: string) => {
+  const handleRestoreDeletedData = async (logId: string) => {
     const res = restoreDeletedData(logId);
     if (res.restoredCount > 0) {
       setBatteries(res.updatedBatteries);
       setDeletionLogs(res.updatedLogs);
       playSoundEffect('success');
+
+      try {
+        await importBatteriesAction(res.updatedBatteries, currentUser?.id, currentUser?.fullName);
+      } catch (e) {
+        console.error('Failed to sync restored batteries to cloud:', e);
+      }
+
       showAlert({
         type: 'success',
         title: 'گەڕاندنەوەی داتاکان',
@@ -736,12 +761,19 @@ export default function App() {
       subMessage: 'هەموو ئەو باترییانەی پێشتر لە لۆگەکاندا ماونەتەوە سەرلەنوێ دەگەڕێنرێنەوە.',
       confirmText: 'گەڕاندنەوەی هەموو',
       cancelText: 'پاشگەزبوونەوە',
-      onConfirm: () => {
+      onConfirm: async () => {
         const res = restoreAllDeletedData();
         if (res.restoredCount > 0) {
           setBatteries(res.updatedBatteries);
           setDeletionLogs(res.updatedLogs);
           playSoundEffect('success');
+
+          try {
+            await importBatteriesAction(res.updatedBatteries, currentUser?.id, currentUser?.fullName);
+          } catch (e) {
+            console.error('Failed to sync restored batteries to cloud:', e);
+          }
+
           showAlert({
             type: 'success',
             title: 'سەرجەم داتاکان گەڕێنرانەوە',
