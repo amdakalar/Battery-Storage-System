@@ -59,6 +59,18 @@ async function executeWebLocalQuery(stmt: any): Promise<{ rows: any[]; columns: 
           approvedAt: '2026-01-01T00:00:00.000Z',
           lastLoginAt: new Date().toISOString(),
         },
+        {
+          id: 'usr_arez',
+          username: 'arez',
+          fullName: 'Arez',
+          passwordHash: '$2a$10$7Zz724E/pC8G30Y9uK2p3.kP.Xg8e6QW7k2jO4c5Qe8e6QW7k2jO',
+          role: 'ADMIN',
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          approvedBy: 'admin',
+          approvedAt: '2026-01-01T00:00:00.000Z',
+          lastLoginAt: new Date().toISOString(),
+        },
       ];
       try {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));

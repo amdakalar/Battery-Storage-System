@@ -140,7 +140,7 @@ function createWindow(): void {
       contextIsolation: true,        // Security: Isolated context
       sandbox: false,                // Needed for preload to access Node APIs
       preload: preloadPath,
-      webSecurity: true,
+      webSecurity: false,            // Allows remote fetch to Turso Cloud & GitHub API from local file://
       allowRunningInsecureContent: false,
       devTools: IS_DEV,              // Disable DevTools in production
     },
