@@ -329,6 +329,9 @@ export function saveCloudTursoConfig(url: string, token: string): void {
   resetTursoClient();
 }
 
+export const DEFAULT_TURSO_DATABASE_URL = 'libsql://storgekrd-amdakalar.aws-ap-northeast-1.turso.io';
+export const DEFAULT_TURSO_AUTH_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODc0MTcwODEsImlkIjoiMDFhMDJhNWItZmMwMS03Y2QyLWIxNmQtNjdiN2E2NmRjOGViIiwia2lkIjoiOFZCRHU2WTVhcm9UanN3YkpoQ0tYenl2dkhFVnJnckJ1ODRja21NX3ROYyIsInJpZCI6IjczM2Q0OTMwLTE4Y2ItNGNjNy1hZTNjLTVmM2JiYTQwOTBjZiJ9.o_MHqiotmRn3fSxe6aHesdKBgIhmjv3O8FCN_SNFAvR4OMc8y4TkLIg2pOFdUJ0bWMGU2ra0kiTsgSB5cP5VDA';
+
 /**
  * Get current active Turso configuration
  */
@@ -351,13 +354,13 @@ export function getCloudTursoConfig(): {
               (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
               (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_DATABASE_URL) ||
               (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_DATABASE_URL) ||
-              '';
+              DEFAULT_TURSO_DATABASE_URL;
 
   const authToken = customToken ||
                     (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
                     (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_AUTH_TOKEN) ||
                     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
-                    '';
+                    DEFAULT_TURSO_AUTH_TOKEN;
 
   const isRemote = isRemoteLibsqlUrl(url);
 
@@ -427,13 +430,13 @@ export function getTursoClient(): Client {
               (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
               (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_DATABASE_URL) ||
               (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_DATABASE_URL) ||
-              defaultLocal;
+              DEFAULT_TURSO_DATABASE_URL;
 
   const authToken = customToken ||
                     (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
                     (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_AUTH_TOKEN) ||
                     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
-                    undefined;
+                    DEFAULT_TURSO_AUTH_TOKEN;
 
   if (isRemoteLibsqlUrl(url)) {
     try {
