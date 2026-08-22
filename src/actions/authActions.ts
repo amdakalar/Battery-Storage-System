@@ -570,3 +570,62 @@ export async function getPendingUsersCountAction(adminUserId: string): Promise<n
     return 0;
   }
 }
+
+/**
+ * Change user password (For Admin or Logged-in User)
+ */
+export async function changeUserPasswordAction(data: {
+  userId: string;
+  currentPassword?: string;
+  newPassword: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    const { userId, currentPassword, newPassword } = data;
+
+    if (!newPassword || newPassword.length < 4) {
+      return { success: false, error: 'وشەی نهێنی نوێ دەبێت کەمترین ٤ پیت یان ژمارە بێت' };
+    }
+
+    const userRes = await client.execute({
+      sql: `SELECT id, fullName, passwordHash FROM users WHERE id = ? LIMIT 1`,
+      args: [userId],
+    });
+
+    if (userRes.rows.length === 0) {
+      return { success: false, error: 'بەکارهێنەر نەدۆزرایەوە' };
+    }
+
+    const row: any = userRes.rows[0];
+
+    // If currentPassword provided, verify it
+    if (currentPassword) {
+      const match = await verifyPassword(currentPassword, String(row.passwordHash));
+      if (!match) {
+        return { success: false, error: 'وشەی نهێنی ئێستات هەڵەیە' };
+      }
+    }
+
+    const newHash = await hashPasswordBcrypt(newPassword);
+    await client.execute({
+      sql: `UPDATE users SET passwordHash = ? WHERE id = ?`,
+      args: [newHash, userId],
+    });
+
+    await logActivity(
+      'USER_ROLE_CHANGE',
+      'گۆڕینی وشەی نهێنی',
+      String(row.fullName || 'User'),
+      userId,
+      String(row.fullName),
+      `وشەی نهێنی هەژماری "${row.fullName}" بە سەرکەوتوویی نوێکرایەوە`
+    );
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error changing password:', err);
+    return { success: false, error: err.message || 'نەتوانرا وشەی نهێنی نوێ بکرێتەوە' };
+  }
+}

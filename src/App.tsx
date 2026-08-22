@@ -53,6 +53,7 @@ import { APP_CONFIG } from './constants/appConfig';
 import { LoginPage } from './components/LoginPage';
 import { AdminUsersModal } from './components/AdminUsersModal';
 import { ChangelogModal } from './components/ChangelogModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
 import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction } from './actions/batteryActions';
 import {
@@ -118,6 +119,7 @@ export default function App() {
   });
   const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
   const [isChangelogModalOpen, setIsChangelogModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
 
   // Workspace Data Mode: 'TEAM' (collaborative team view) vs 'PERSONAL' (my batteries only)
@@ -1872,6 +1874,7 @@ export default function App() {
           currentUser={currentUser}
           onOpenAdminModal={() => setIsAdminUsersModalOpen(true)}
           onOpenChangelog={() => setIsChangelogModalOpen(true)}
+          onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
           pendingUsersCount={pendingUsersCount}
           onLogout={handleLogout}
         />
@@ -2211,6 +2214,10 @@ export default function App() {
                   setIsChangelogModalOpen(true);
                   setMobileMenuOpen(false);
                 }}
+                onOpenChangePassword={() => {
+                  setIsChangePasswordModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
                 pendingUsersCount={pendingUsersCount}
                 onLogout={() => {
                   handleLogout();
@@ -2370,6 +2377,14 @@ export default function App() {
         isOpen={isChangelogModalOpen}
         onClose={() => setIsChangelogModalOpen(false)}
       />
+
+      {currentUser && (
+        <ChangePasswordModal
+          isOpen={isChangePasswordModalOpen}
+          onClose={() => setIsChangePasswordModalOpen(false)}
+          currentUser={currentUser}
+        />
+      )}
 
     </div>
   );

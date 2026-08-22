@@ -15,6 +15,7 @@ import {
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
   ShieldCheckIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -34,6 +35,7 @@ interface SidebarProps {
   currentUser?: User | null;
   onOpenAdminModal?: () => void;
   onOpenChangelog?: () => void;
+  onOpenChangePassword?: () => void;
   pendingUsersCount?: number;
   onLogout?: () => void;
 }
@@ -79,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   onOpenAdminModal,
   onOpenChangelog,
+  onOpenChangePassword,
   pendingUsersCount,
   onLogout,
 }) => {
@@ -328,13 +331,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {!isCollapsed && (
-              <button
-                onClick={onLogout}
-                title="چوونەدەرەوە"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
-              >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {onOpenChangePassword && (
+                  <button
+                    onClick={onOpenChangePassword}
+                    title="گۆڕینی وشەی نهێنی"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                  >
+                    <KeyIcon className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={onLogout}
+                  title="چوونەدەرەوە"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         </div>
