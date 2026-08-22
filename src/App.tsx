@@ -1071,42 +1071,51 @@ export default function App() {
           const content = event.target?.result as string;
           if (!content) return;
 
-          const extracted = extractBatteriesFromJSON(content);
-          if (extracted && extracted.batteries && extracted.batteries.length >= 0) {
-            importDataJSON(content);
-            setBatteries(extracted.batteries);
-            playSoundEffect('success');
-
-            // Immediately upload and persist all imported batteries & charge histories to Turso cloud
-            try {
-              await importBatteriesAction(
-                extracted.batteries,
-                currentUser?.id,
-                currentUser?.fullName
-              );
-              // Re-fetch from cloud to ensure total consistency
-              const synced = await getBatteriesAction();
-              if (synced && synced.length > 0) {
-                setBatteries(synced);
-                saveBatteries(synced);
+          isMutatingRef.current = true;
+          try {
+            const extracted = extractBatteriesFromJSON(content);
+            if (extracted && extracted.batteries && extracted.batteries.length >= 0) {
+              importDataJSON(content);
+              if (extracted.categories && Array.isArray(extracted.categories)) {
+                setCategories(extracted.categories);
               }
-            } catch (err) {
-              console.error('Failed to sync imported batteries to cloud:', err);
-            }
+              setBatteries(extracted.batteries);
+              saveBatteries(extracted.batteries);
+              playSoundEffect('success');
 
-            showAlert({
-              type: 'success',
-              title: 'هێنانی داتا (Import JSON)',
-              message: `کۆی ${extracted.batteries.length} باتری بە سەرکەوتوویی لەگەڵ مێژوو و زانیارییەکانی هاوردەکران و لەسەر دەیتابەیسی هەور پاشەکەوتکران.`,
-              confirmText: 'باشە',
-            });
-          } else {
-            showAlert({
-              type: 'error',
-              title: 'هەڵە لە خوێندنەوەی پەڕگە',
-              message: 'فۆرماتی فایلی JSON نەناسراوە یان هیچ داتایەکی باتری تێدا نەدۆزرایەوە.',
-              confirmText: 'داخستن',
-            });
+              // Immediately upload and persist all imported batteries & charge histories to Turso cloud
+              try {
+                await importBatteriesAction(
+                  extracted.batteries,
+                  currentUser?.id,
+                  currentUser?.fullName
+                );
+                // Re-fetch from cloud to ensure total consistency
+                const synced = await getBatteriesAction();
+                if (synced && synced.length > 0) {
+                  setBatteries(synced);
+                  saveBatteries(synced);
+                }
+              } catch (err) {
+                console.error('Failed to sync imported batteries to cloud:', err);
+              }
+
+              showAlert({
+                type: 'success',
+                title: 'هێنانی داتا (Import JSON)',
+                message: `کۆی ${extracted.batteries.length} باتری بە سەرکەوتوویی لەگەڵ مێژوو و زانیارییەکانی هاوردەکران و لەسەر دەیتابەیسی هەور پاشەکەوتکران.`,
+                confirmText: 'باشە',
+              });
+            } else {
+              showAlert({
+                type: 'error',
+                title: 'هەڵە لە خوێندنەوەی پەڕگە',
+                message: 'فۆرماتی فایلی JSON نەناسراوە یان هیچ داتایەکی باتری تێدا نەدۆزرایەوە.',
+                confirmText: 'داخستن',
+              });
+            }
+          } finally {
+            isMutatingRef.current = false;
           }
         };
         reader.readAsText(file);

@@ -675,15 +675,17 @@ export async function restoreDeletedDataAction(
     const existingRes = await client.execute(`SELECT id FROM batteries`);
     const existingIds = new Set(existingRes.rows.map((r: any) => String(r.id)));
 
-    const statements: any[] = [];
+    const batteryStatements: any[] = [];
+    const historyStatements: any[] = [];
     const restoredAt = new Date().toISOString();
     const restoredBy = currentUserName || 'بەڕێوەبەری سیستەم';
 
-    for (const b of batteriesToRestore) {
+    for (let index = 0; index < batteriesToRestore.length; index++) {
+      const b = batteriesToRestore[index];
       // Re-assign ID if active battery shares ID
       let finalId = b.id;
       if (existingIds.has(finalId)) {
-        finalId = `bat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        finalId = `bat_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 6)}`;
       }
       existingIds.add(finalId);
 
@@ -691,7 +693,7 @@ export async function restoreDeletedDataAction(
       const ownerUserId = b.userId || currentUserId || null;
       const ownerName = b.authorName || restoredBy;
 
-      statements.push({
+      batteryStatements.push({
         sql: `INSERT OR REPLACE INTO batteries (
           id, userId, authorName, name, category, lastChargeDate, reminderIntervalDays,
           voltage, storagePercentage, notes, cells_json, createdAt
@@ -713,9 +715,10 @@ export async function restoreDeletedDataAction(
       });
 
       if (b.history && Array.isArray(b.history)) {
-        for (const h of b.history) {
-          const histId = h.id || `hist_${finalId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
-          statements.push({
+        for (let hIdx = 0; hIdx < b.history.length; hIdx++) {
+          const h = b.history[hIdx];
+          const histId = h.id || `hist_${finalId}_${hIdx}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+          historyStatements.push({
             sql: `INSERT OR REPLACE INTO charge_history (
               id, batteryId, userId, authorName, chargeDate, chargeTime, daysSincePrevious, notes, percentage
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -735,19 +738,25 @@ export async function restoreDeletedDataAction(
       }
     }
 
-    // Mark deletion log as restored
-    statements.push({
+    // 1. Execute all battery insertions first
+    for (let i = 0; i < batteryStatements.length; i += 50) {
+      const chunk = batteryStatements.slice(i, i + 50);
+      await client.batch(chunk);
+    }
+
+    // 2. Execute all history record insertions second
+    for (let i = 0; i < historyStatements.length; i += 50) {
+      const chunk = historyStatements.slice(i, i + 50);
+      await client.batch(chunk);
+    }
+
+    // 3. Mark deletion log as restored
+    await client.execute({
       sql: `UPDATE deletion_logs SET isRestored = 1, restoredAt = ?, restoredBy = ? WHERE id = ?`,
       args: [restoredAt, restoredBy, logId],
     });
 
-    // Execute batch insertion
-    for (let i = 0; i < statements.length; i += 100) {
-      const chunk = statements.slice(i, i + 100);
-      await client.batch(chunk);
-    }
-
-    // 3. Direct Verification: Verify restored batteries now exist in Turso
+    // 4. Direct Verification: Verify restored batteries now exist in Turso
     const countCheck = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
     const totalCount = Number(countCheck.rows[0]?.count || 0);
 
@@ -847,14 +856,15 @@ export async function importBatteriesAction(
     await ensureTables();
     const client = getTursoClient();
 
-    const statements: any[] = [];
+    const batteryStatements: any[] = [];
+    const historyStatements: any[] = [];
     const ownerName = currentUserName || 'بەکارهێنەر';
 
     for (const b of batteries) {
       const cellsJson = b.cells ? JSON.stringify(b.cells) : null;
       const ownerUserId = b.userId || currentUserId || null;
 
-      statements.push({
+      batteryStatements.push({
         sql: `INSERT OR REPLACE INTO batteries (
           id, userId, authorName, name, category, lastChargeDate, reminderIntervalDays,
           voltage, storagePercentage, notes, cells_json, createdAt
@@ -877,7 +887,7 @@ export async function importBatteriesAction(
 
       if (b.history && b.history.length > 0) {
         for (const h of b.history) {
-          statements.push({
+          historyStatements.push({
             sql: `INSERT OR REPLACE INTO charge_history (
               id, batteryId, userId, authorName, chargeDate, chargeTime, daysSincePrevious, notes, percentage
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -897,9 +907,15 @@ export async function importBatteriesAction(
       }
     }
 
-    // Execute in batches of 100
-    for (let i = 0; i < statements.length; i += 100) {
-      const chunk = statements.slice(i, i + 100);
+    // 1. Execute all battery insertions first
+    for (let i = 0; i < batteryStatements.length; i += 50) {
+      const chunk = batteryStatements.slice(i, i + 50);
+      await client.batch(chunk);
+    }
+
+    // 2. Execute all history record insertions second
+    for (let i = 0; i < historyStatements.length; i += 50) {
+      const chunk = historyStatements.slice(i, i + 50);
       await client.batch(chunk);
     }
 
