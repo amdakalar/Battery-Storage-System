@@ -203,6 +203,123 @@ export async function createUserByAdminAction(
 }
 
 /**
+ * Update user profile (Name, Username, Role, optional Password)
+ * Can be performed by Admin on any user (including default admin), or by any user on themselves.
+ */
+export async function updateUserProfileAction(
+  operatorUserId: string,
+  targetUserId: string,
+  data: {
+    fullName: string;
+    username: string;
+    role?: UserRole;
+    newPassword?: string;
+  }
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    // Verify operator
+    const operatorRes = await client.execute({
+      sql: `SELECT role, fullName FROM users WHERE id = ? LIMIT 1`,
+      args: [operatorUserId],
+    });
+
+    if (operatorRes.rows.length === 0) {
+      return { success: false, error: 'بەکارهێنەری ئەنجامدەر نەدۆزرایەوە' };
+    }
+
+    const operatorRole = String(operatorRes.rows[0].role);
+    const operatorName = String(operatorRes.rows[0].fullName || 'User');
+    const isSelf = operatorUserId === targetUserId;
+    const isAdmin = operatorRole === 'ADMIN';
+
+    if (!isAdmin && !isSelf) {
+      return { success: false, error: 'دەسەڵاتی پێویستت نییە بۆ دەستکاریکردنی ئەم هەژمارە' };
+    }
+
+    // Check target user
+    const targetRes = await client.execute({
+      sql: `SELECT * FROM users WHERE id = ? LIMIT 1`,
+      args: [targetUserId],
+    });
+
+    if (targetRes.rows.length === 0) {
+      return { success: false, error: 'هەژماری بەکارهێنەر نەدۆزرایەوە' };
+    }
+
+    const targetRow: any = targetRes.rows[0];
+    const username = data.username.trim().toLowerCase();
+    const fullName = data.fullName.trim();
+
+    if (!username || username.length < 3) {
+      return { success: false, error: 'ناوی بەکارهێنەر دەبێت کەمترین ۳ پیت بێت' };
+    }
+    if (!fullName || fullName.length < 2) {
+      return { success: false, error: 'تکایە ناوی تەواو بنووسە' };
+    }
+
+    // Check if new username is taken by another user
+    if (username !== String(targetRow.username).toLowerCase()) {
+      const usernameCheck = await client.execute({
+        sql: `SELECT id FROM users WHERE LOWER(username) = ? AND id != ? LIMIT 1`,
+        args: [username, targetUserId],
+      });
+      if (usernameCheck.rows.length > 0) {
+        return { success: false, error: 'ئەم ناوی بەکارهێنەرە لەلایەن کەسێکی ترەوە بەکارهاتووە' };
+      }
+    }
+
+    // Handle role change (only admin can change roles)
+    let newRole: UserRole = targetRow.role as UserRole;
+    if (isAdmin && data.role) {
+      newRole = data.role;
+    }
+
+    // Handle password change if specified
+    if (data.newPassword && data.newPassword.length >= 4) {
+      const newHash = await hashPasswordBcrypt(data.newPassword);
+      await client.execute({
+        sql: `UPDATE users SET fullName = ?, username = ?, role = ?, passwordHash = ? WHERE id = ?`,
+        args: [fullName, username, newRole, newHash, targetUserId],
+      });
+    } else {
+      await client.execute({
+        sql: `UPDATE users SET fullName = ?, username = ?, role = ? WHERE id = ?`,
+        args: [fullName, username, newRole, targetUserId],
+      });
+    }
+
+    const updatedUser: User = {
+      id: String(targetRow.id),
+      username,
+      fullName,
+      role: newRole,
+      status: String(targetRow.status) as UserStatus,
+      createdAt: String(targetRow.createdAt),
+      approvedBy: targetRow.approvedBy ? String(targetRow.approvedBy) : undefined,
+      approvedAt: targetRow.approvedAt ? String(targetRow.approvedAt) : undefined,
+      lastLoginAt: targetRow.lastLoginAt ? String(targetRow.lastLoginAt) : undefined,
+    };
+
+    await logActivity(
+      'USER_ROLE_CHANGE',
+      'دەستکاریکردنی زانیارییەکانی هەژمار',
+      operatorName,
+      operatorUserId,
+      fullName,
+      `زانیارییەکانی هەژماری "${fullName}" (@${username}) بە سەرکەوتوویی نوێکرایەوە`
+    );
+
+    return { success: true, user: updatedUser };
+  } catch (err: any) {
+    console.error('Error updating user profile:', err);
+    return { success: false, error: err.message || 'نەتوانرا زانیارییەکان نوێ بکرێتەوە' };
+  }
+}
+
+/**
  * Log in with username and password
  */
 export async function loginUserAction(data: {

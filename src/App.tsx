@@ -51,8 +51,8 @@ import { LicenseState, UpdateCheckResult, User } from './types';
 import { DroneCategoryInfo, loadCategories, addCustomCategory, updateCategory, deleteCustomCategory, getNormalizedCategory, DEFAULT_CATEGORY } from './constants/categories';
 import { APP_CONFIG } from './constants/appConfig';
 import { LoginPage } from './components/LoginPage';
-import { AdminUsersModal } from './components/AdminUsersModal';
-import { ChangelogModal } from './components/ChangelogModal';
+import { ChangelogView } from './components/ChangelogView';
+import { UsersManagementView } from './components/UsersManagementView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
 import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction } from './actions/batteryActions';
@@ -98,7 +98,9 @@ export default function App() {
   const [batteries, setBatteries] = useState<Battery[]>([]);
   const [settings, setSettings] = useState<AppSettings>(loadSettings());
   const [simulatedReferenceDate, setSimulatedReferenceDate] = useState<string | undefined>(undefined);
-  const [activeView, setActiveView] = useState<'dashboard' | 'batteries' | 'analytics' | 'notifications' | 'history' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = useState<
+    'dashboard' | 'batteries' | 'analytics' | 'notifications' | 'history' | 'changelog' | 'users' | 'settings'
+  >('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -117,8 +119,6 @@ export default function App() {
     }
     return null;
   });
-  const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
-  const [isChangelogModalOpen, setIsChangelogModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
 
@@ -755,6 +755,21 @@ export default function App() {
         return renderNotificationsContent();
       case 'history':
         return renderHistoryContent();
+      case 'changelog':
+        return <ChangelogView />;
+      case 'users':
+        return currentUser && currentUser.role === 'ADMIN' ? (
+          <UsersManagementView
+            currentAdmin={currentUser}
+            onUserUpdated={(updated) => {
+              setCurrentUser(updated);
+              localStorage.setItem('storage_auth_user', JSON.stringify(updated));
+            }}
+            onUserListChange={refreshPendingCount}
+          />
+        ) : (
+          renderDashboardContent()
+        );
       case 'settings':
         return renderSettingsContent();
       default:
@@ -1872,8 +1887,6 @@ export default function App() {
           latestVersion={updateCheckResult?.latestVersion}
           onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
           currentUser={currentUser}
-          onOpenAdminModal={() => setIsAdminUsersModalOpen(true)}
-          onOpenChangelog={() => setIsChangelogModalOpen(true)}
           onOpenChangePassword={() => setIsChangePasswordModalOpen(true)}
           pendingUsersCount={pendingUsersCount}
           onLogout={handleLogout}
@@ -2141,12 +2154,16 @@ export default function App() {
                       {activeView === 'dashboard' && 'داشبۆرد'}
                       {activeView === 'analytics' && 'ڕاپۆرتی پیشەیی'}
                       {activeView === 'notifications' && 'ئاگادارکردنەوەکان'}
+                      {activeView === 'changelog' && 'مێژووی گۆڕانکارییەکان'}
+                      {activeView === 'users' && 'بەڕێوەبردنی بەکارهێنەران'}
                       {activeView === 'settings' && 'ڕێکخستنەکان'}
                     </h1>
                     <p className="text-[11px] text-slate-400 font-medium mt-0.5">
                       {activeView === 'dashboard' && 'پێشاندانی گشتی و پوختەی باترییەکان'}
                       {activeView === 'analytics' && 'شیکاری تەندروستی و کارایی باترییەکانت'}
                       {activeView === 'notifications' && 'یادەوەری و هۆشدارییەکانی ستۆرجکردن'}
+                      {activeView === 'changelog' && 'تەواوی مێژووی چالاکی و گۆڕانکارییەکانی سیستەم'}
+                      {activeView === 'users' && 'بەڕێوەبردن و دەستکاریکردنی کارمەندان و دەسەڵاتەکان'}
                       {activeView === 'settings' && 'ڕێکخستنی سیستەم و بژاردەکان'}
                     </p>
                   </div>
@@ -2206,14 +2223,6 @@ export default function App() {
                   setMobileMenuOpen(false);
                 }}
                 currentUser={currentUser}
-                onOpenAdminModal={() => {
-                  setIsAdminUsersModalOpen(true);
-                  setMobileMenuOpen(false);
-                }}
-                onOpenChangelog={() => {
-                  setIsChangelogModalOpen(true);
-                  setMobileMenuOpen(false);
-                }}
                 onOpenChangePassword={() => {
                   setIsChangePasswordModalOpen(true);
                   setMobileMenuOpen(false);
@@ -2362,20 +2371,6 @@ export default function App() {
       <CustomDialog
         config={dialogConfig}
         onClose={() => setDialogConfig(null)}
-      />
-
-      {currentUser && currentUser.role === 'ADMIN' && (
-        <AdminUsersModal
-          isOpen={isAdminUsersModalOpen}
-          onClose={() => setIsAdminUsersModalOpen(false)}
-          currentAdmin={currentUser}
-          onUserListChange={refreshPendingCount}
-        />
-      )}
-
-      <ChangelogModal
-        isOpen={isChangelogModalOpen}
-        onClose={() => setIsChangelogModalOpen(false)}
       />
 
       {currentUser && (
