@@ -55,7 +55,7 @@ import { ChangelogView } from './components/ChangelogView';
 import { UsersManagementView } from './components/UsersManagementView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
-import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction } from './actions/batteryActions';
+import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction, importBatteriesAction } from './actions/batteryActions';
 import {
   BoltIcon,
   InformationCircleIcon,
@@ -292,23 +292,63 @@ export default function App() {
     setIsAddModalOpen(true);
   };
 
-  // Load saved battery data & silently check for GitHub release updates on startup
+  // Synchronize and refresh batteries silently in the background without UI interruption
+  const syncBatteriesSilently = React.useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const cloudBatteries = await getBatteriesAction();
+      if (cloudBatteries && cloudBatteries.length > 0) {
+        setBatteries((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(cloudBatteries)) {
+            saveBatteries(cloudBatteries);
+            return cloudBatteries;
+          }
+          return prev;
+        });
+      } else {
+        // If cloud returned 0 batteries (e.g. fresh database / container reset),
+        // check if we have local cached batteries to auto-restore and protect
+        const localCached = loadBatteries();
+        if (localCached && localCached.length > 0) {
+          await importBatteriesAction(localCached, currentUser.id, currentUser.fullName);
+          const restored = await getBatteriesAction();
+          if (restored && restored.length > 0) {
+            setBatteries(restored);
+            saveBatteries(restored);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Silent sync error:', e);
+    }
+  }, [currentUser]);
+
+  // Initial load: load from local storage instantly (0ms blank delay), then sync cloud
   useEffect(() => {
     if (!currentUser) return;
     let isMounted = true;
+
+    // 1. Instant local display
+    const cached = loadBatteries();
+    if (cached && cached.length > 0) {
+      setBatteries(cached);
+    }
+
+    // 2. Fetch and sync cloud
     (async () => {
       try {
         const cloudBatteries = await getBatteriesAction();
-        if (isMounted && cloudBatteries && cloudBatteries.length >= 0) {
-          setBatteries(cloudBatteries);
-          saveBatteries(cloudBatteries);
+        if (isMounted) {
+          if (cloudBatteries && cloudBatteries.length > 0) {
+            setBatteries(cloudBatteries);
+            saveBatteries(cloudBatteries);
+          } else if (cached && cached.length > 0) {
+            // Auto-restore local data into cloud
+            await importBatteriesAction(cached, currentUser.id, currentUser.fullName);
+          }
         }
       } catch (error) {
         console.error('Error loading batteries from Turso:', error);
-        const loaded = await loadBatteriesAsync();
-        if (isMounted) {
-          setBatteries(loaded);
-        }
       }
     })();
 
@@ -316,7 +356,7 @@ export default function App() {
       refreshPendingCount();
     }
 
-    // Auto-check for updates silently after 2 seconds
+    // 3. Auto-check for updates silently after 2 seconds (desktop)
     const timer = setTimeout(async () => {
       try {
         if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
@@ -336,6 +376,40 @@ export default function App() {
       clearTimeout(timer);
     };
   }, [currentUser]);
+
+  // Live Auto-Refresh:
+  // Automatically re-fetch latest data when switching tabs (activeView), focusing window, or every 15 seconds
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Refresh immediately on activeView change
+    syncBatteriesSilently();
+    if (currentUser.role === 'ADMIN') {
+      refreshPendingCount();
+    }
+
+    // Refresh on tab focus / visibility change
+    const handleFocus = () => {
+      syncBatteriesSilently();
+      if (currentUser.role === 'ADMIN') {
+        refreshPendingCount();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    // Periodic live sync every 15 seconds so changes from all team members appear live
+    const liveInterval = setInterval(() => {
+      syncBatteriesSilently();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      clearInterval(liveInterval);
+    };
+  }, [activeView, currentUser, syncBatteriesSilently]);
 
   // Audio effect generator using Web Audio API for feedback (console warning safe)
   const playSoundEffect = (type: 'success' | 'alert') => {
@@ -1746,6 +1820,26 @@ export default function App() {
 
   const onTimeCount = batteries.length - overdueCount - dueCount - earlyWarningCount;
 
+  // PWA Home Screen Icon Red Badge Notification:
+  // When batteries are overdue or urgent, display a red notification badge on the device's home screen app icon
+  useEffect(() => {
+    const totalBadges = overdueCount > 0 ? overdueCount : urgentBatteries.length;
+    if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+      if (totalBadges > 0) {
+        navigator.setAppBadge(totalBadges).catch(() => {});
+      } else {
+        navigator.clearAppBadge().catch(() => {});
+      }
+    }
+    // Also notify Service Worker
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: totalBadges > 0 ? 'SET_BADGE' : 'CLEAR_BADGE',
+        count: totalBadges,
+      });
+    }
+  }, [overdueCount, urgentBatteries.length]);
+
   const renderDashboardContent = () => {
     if (batteries.length === 0) {
       return (
@@ -1941,8 +2035,15 @@ export default function App() {
             <div className="flex items-center justify-between gap-3">
               {/* Logo and Title */}
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shrink-0">
-                  <BoltIcon className="w-5 h-5" />
+                <div className="relative shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md">
+                    <BoltIcon className="w-5 h-5" />
+                  </div>
+                  {overdueCount > 0 && (
+                    <span className="absolute -top-1 -right-1.5 bg-rose-500 text-white font-mono text-[9px] font-black min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 animate-pulse shadow-xs">
+                      {overdueCount > 9 ? '9+' : overdueCount}
+                    </span>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-sm font-black tracking-tight leading-tight truncate" style={{ color: 'var(--text-primary)' }}>

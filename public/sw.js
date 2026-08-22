@@ -1,4 +1,4 @@
-const CACHE_NAME = 'storage-battery-v1';
+const CACHE_NAME = 'storage-battery-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -26,6 +26,27 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// Listen for messages from client (badge updates, notification triggers)
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+
+  // Handle App Badging on Mobile / Desktop PWA
+  if (event.data.type === 'SET_BADGE') {
+    const count = Number(event.data.count || 0);
+    if ('setAppBadge' in self.navigator) {
+      if (count > 0) {
+        self.navigator.setAppBadge(count).catch(() => {});
+      } else {
+        self.navigator.clearAppBadge().catch(() => {});
+      }
+    }
+  } else if (event.data.type === 'CLEAR_BADGE') {
+    if ('clearAppBadge' in self.navigator) {
+      self.navigator.clearAppBadge().catch(() => {});
+    }
+  }
 });
 
 // Fetch: Network-first for API/actions, Cache-first for static assets

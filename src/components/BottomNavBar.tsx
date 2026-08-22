@@ -30,6 +30,7 @@ interface BottomNavBarProps {
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   activeView,
   onViewChange,
+  urgentCount,
   onOpenAddModal,
   currentUser,
 }) => {
@@ -153,6 +154,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             }
 
             const isActive = activeView === item.id;
+            const hasBadge = item.id === 'batteries' && urgentCount > 0;
 
             return (
               <button
@@ -161,16 +163,23 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
                   onViewChange(item.id);
                   setShowMore(false);
                 }}
-                className="flex flex-col items-center gap-1 p-2 min-w-[52px] cursor-pointer rounded-2xl transition-all"
+                className="flex flex-col items-center gap-1 p-2 min-w-[52px] cursor-pointer rounded-2xl transition-all relative"
                 style={{
                   background: isActive ? 'rgba(5,150,105,0.10)' : 'transparent',
                 }}
               >
-                <Icon
-                  className="w-6 h-6 transition-colors"
-                  style={{ color: isActive ? '#059669' : 'var(--text-muted)' }}
-                  strokeWidth={isActive ? 2.2 : 1.8}
-                />
+                <div className="relative">
+                  <Icon
+                    className="w-6 h-6 transition-colors"
+                    style={{ color: isActive ? '#059669' : 'var(--text-muted)' }}
+                    strokeWidth={isActive ? 2.2 : 1.8}
+                  />
+                  {hasBadge && (
+                    <span className="absolute -top-1 -right-2 bg-rose-500 text-white font-mono text-[9.5px] font-black min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center shadow-xs border-2 border-white dark:border-slate-900 animate-pulse">
+                      {urgentCount > 99 ? '99+' : urgentCount}
+                    </span>
+                  )}
+                </div>
                 <span
                   className="text-[10px] font-bold transition-colors"
                   style={{ color: isActive ? '#059669' : 'var(--text-muted)' }}
