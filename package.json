@@ -40,6 +40,7 @@
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.1.14",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
@@ -52,6 +53,7 @@
     "electron": "^34.3.0",
     "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
+    "postcss": "^8.5.26",
     "rcedit": "^5.0.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
