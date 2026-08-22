@@ -1,19 +1,313 @@
 import { createClient, Client } from '@libsql/client';
+import { Battery } from '../types';
 
 let tursoClient: Client | null = null;
 
+function isRemoteLibsqlUrl(url?: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  return (
+    trimmed.startsWith('libsql://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('wss://') ||
+    trimmed.startsWith('ws://')
+  );
+}
+
+/**
+ * Local Web fallback query processor when running offline in browser / Electron
+ */
+async function executeWebLocalQuery(stmt: any): Promise<{ rows: any[]; columns: string[] }> {
+  const sql = (typeof stmt === 'string' ? stmt : stmt?.sql || '').trim();
+  const args = (typeof stmt === 'object' && Array.isArray(stmt?.args) ? stmt.args : []);
+  const lowerSql = sql.toLowerCase();
+
+  // 1. Schema queries (CREATE, ALTER, INDEX) -> return empty success
+  if (
+    lowerSql.startsWith('create ') ||
+    lowerSql.startsWith('alter ') ||
+    lowerSql.startsWith('drop ') ||
+    lowerSql.startsWith('pragma ')
+  ) {
+    return { rows: [], columns: [] };
+  }
+
+  // 2. Users Table Queries
+  if (lowerSql.includes('users')) {
+    const USERS_STORAGE_KEY = 'storage_local_users_v1';
+    let users: any[] = [];
+    try {
+      const raw = localStorage.getItem(USERS_STORAGE_KEY);
+      users = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      users = [];
+    }
+
+    if (users.length === 0) {
+      // Default admin user
+      users = [
+        {
+          id: 'usr_admin_default',
+          username: 'admin',
+          fullName: 'بەڕێوەبەری سەرەکی (Admin)',
+          passwordHash: '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+          role: 'ADMIN',
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          approvedBy: 'SYSTEM',
+          approvedAt: '2026-01-01T00:00:00.000Z',
+          lastLoginAt: new Date().toISOString(),
+        },
+      ];
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      } catch (e) {}
+    }
+
+    if (lowerSql.startsWith('select count(*) as count from users where status = \'pending\'') || lowerSql.includes("status = 'pending'")) {
+      const pending = users.filter((u) => u.status === 'PENDING').length;
+      return { rows: [{ count: pending }], columns: ['count'] };
+    }
+
+    if (lowerSql.startsWith('select count(*)')) {
+      return { rows: [{ count: users.length }], columns: ['count'] };
+    }
+
+    if (lowerSql.includes('where lower(username) = ?') || lowerSql.includes('where username = ?')) {
+      const uname = String(args[0] || '').toLowerCase().trim();
+      const match = users.filter((u) => u.username.toLowerCase() === uname);
+      return { rows: match, columns: Object.keys(match[0] || {}) };
+    }
+
+    if (lowerSql.includes('where id = ?')) {
+      const uId = String(args[0] || '');
+      const match = users.filter((u) => u.id === uId);
+      return { rows: match, columns: Object.keys(match[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('select * from users')) {
+      return { rows: users, columns: Object.keys(users[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('insert into users') || lowerSql.startsWith('insert or replace into users')) {
+      const newUser = {
+        id: args[0],
+        username: args[1],
+        fullName: args[2],
+        passwordHash: args[3],
+        role: args[4] || 'USER',
+        status: args[5] || 'PENDING',
+        createdAt: args[6] || new Date().toISOString(),
+        approvedBy: args[7] || null,
+        approvedAt: args[8] || null,
+        lastLoginAt: args[9] || null,
+      };
+      const existingIdx = users.findIndex((u) => u.id === newUser.id || u.username.toLowerCase() === newUser.username.toLowerCase());
+      if (existingIdx >= 0) {
+        users[existingIdx] = newUser;
+      } else {
+        users.push(newUser);
+      }
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+
+    if (lowerSql.startsWith('update users')) {
+      if (lowerSql.includes('lastloginat = ? where id = ?')) {
+        const [lastLoginAt, id] = args;
+        users = users.map((u) => (u.id === id ? { ...u, lastLoginAt } : u));
+      } else if (lowerSql.includes('status = ?')) {
+        const [status, approvedBy, approvedAt, id] = args;
+        users = users.map((u) => (u.id === id ? { ...u, status, approvedBy, approvedAt } : u));
+      } else if (lowerSql.includes('role = ?') && lowerSql.includes('passwordhash = ?')) {
+        const [fullName, username, role, passwordHash, id] = args;
+        users = users.map((u) => (u.id === id ? { ...u, fullName, username, role, passwordHash } : u));
+      } else if (lowerSql.includes('role = ?')) {
+        const [fullName, username, role, id] = args;
+        users = users.map((u) => (u.id === id ? { ...u, fullName, username, role } : u));
+      }
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+
+    if (lowerSql.startsWith('delete from users where id = ?')) {
+      const uId = String(args[0] || '');
+      users = users.filter((u) => u.id !== uId);
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+  }
+
+  // 3. Batteries Table Queries
+  if (lowerSql.includes('batteries')) {
+    const BATTERIES_KEY = 'drone_batteries_storage_v1';
+    let batteries: Battery[] = [];
+    try {
+      const raw = localStorage.getItem(BATTERIES_KEY);
+      batteries = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      batteries = [];
+    }
+
+    if (lowerSql.startsWith('select count(*)')) {
+      return { rows: [{ count: batteries.length }], columns: ['count'] };
+    }
+
+    if (lowerSql.startsWith('select * from batteries')) {
+      return { rows: batteries, columns: Object.keys(batteries[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('delete from batteries')) {
+      if (lowerSql.includes('where id = ?')) {
+        const bId = String(args[0] || '');
+        batteries = batteries.filter((b) => b.id !== bId);
+      } else {
+        batteries = [];
+      }
+      try {
+        localStorage.setItem(BATTERIES_KEY, JSON.stringify(batteries));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+  }
+
+  // 4. Charge History Table Queries
+  if (lowerSql.includes('charge_history')) {
+    const BATTERIES_KEY = 'drone_batteries_storage_v1';
+    let batteries: Battery[] = [];
+    try {
+      const raw = localStorage.getItem(BATTERIES_KEY);
+      batteries = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      batteries = [];
+    }
+
+    const allHistory: any[] = [];
+    for (const b of batteries) {
+      if (b.history) {
+        for (const h of b.history) {
+          allHistory.push({ ...h, batteryId: b.id });
+        }
+      }
+    }
+
+    if (lowerSql.startsWith('select count(*)')) {
+      return { rows: [{ count: allHistory.length }], columns: ['count'] };
+    }
+
+    if (lowerSql.startsWith('select * from charge_history')) {
+      return { rows: allHistory, columns: Object.keys(allHistory[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('delete from charge_history')) {
+      return { rows: [], columns: [] };
+    }
+  }
+
+  // 5. Deletion Logs Table Queries
+  if (lowerSql.includes('deletion_logs')) {
+    const DELETION_LOGS_KEY = 'kurdish_battery_deletion_logs_v1';
+    let logs: any[] = [];
+    try {
+      const raw = localStorage.getItem(DELETION_LOGS_KEY);
+      logs = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      logs = [];
+    }
+
+    if (lowerSql.startsWith('select * from deletion_logs where isrestored = 0')) {
+      const unrestored = logs.filter((l) => !l.isRestored);
+      return { rows: unrestored, columns: Object.keys(unrestored[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('select * from deletion_logs where id = ?')) {
+      const lId = String(args[0] || '');
+      const match = logs.filter((l) => l.id === lId);
+      return { rows: match, columns: Object.keys(match[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('select * from deletion_logs')) {
+      return { rows: logs, columns: Object.keys(logs[0] || {}) };
+    }
+
+    if (lowerSql.startsWith('insert into deletion_logs')) {
+      const newLog = {
+        id: args[0],
+        timestamp: args[1],
+        batteryCountCleared: args[2],
+        historyCountCleared: args[3],
+        reason: args[4],
+        clearedBy: args[5],
+        clearedById: args[6],
+        deletedBatteries_json: args[7],
+        isRestored: 0,
+      };
+      logs = [newLog, ...logs];
+      try {
+        localStorage.setItem(DELETION_LOGS_KEY, JSON.stringify(logs));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+
+    if (lowerSql.startsWith('update deletion_logs set isrestored = 1')) {
+      const [restoredAt, restoredBy, id] = args;
+      logs = logs.map((l) => (l.id === id ? { ...l, isRestored: 1, restoredAt, restoredBy } : l));
+      try {
+        localStorage.setItem(DELETION_LOGS_KEY, JSON.stringify(logs));
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+
+    if (lowerSql.startsWith('delete from deletion_logs')) {
+      try {
+        localStorage.removeItem(DELETION_LOGS_KEY);
+      } catch (e) {}
+      return { rows: [], columns: [] };
+    }
+  }
+
+  // 6. Audit logs
+  if (lowerSql.includes('audit_logs')) {
+    return { rows: [], columns: [] };
+  }
+
+  return { rows: [], columns: [] };
+}
+
+function createWebLocalClient(): Client {
+  return {
+    async execute(stmt: any): Promise<any> {
+      return await executeWebLocalQuery(stmt);
+    },
+    async batch(stmts: any[]): Promise<any[]> {
+      const results: any[] = [];
+      for (const s of stmts) {
+        results.push(await executeWebLocalQuery(s));
+      }
+      return results;
+    },
+    async transaction(): Promise<any> {
+      return this;
+    },
+    close() {},
+    closed: false,
+    protocol: 'ws',
+  } as any;
+}
+
 /**
  * Get or initialize the LibSQL / Turso Cloud SQLite Client.
- * Uses environment variables:
- * - TURSO_DATABASE_URL (e.g. libsql://your-db-name.turso.io)
- * - TURSO_AUTH_TOKEN (Turso auth token)
- * 
- * Falls back to a local SQLite file in /tmp or local.db if no Turso URL is specified.
  */
 export function getTursoClient(): Client {
   if (tursoClient) return tursoClient;
 
-  // On Vercel serverless functions, the root filesystem is read-only, so SQLite fallback must be in /tmp
   let defaultLocal = 'file:local.db';
   if (typeof process !== 'undefined' && (process.env?.VERCEL || process.env?.TMPDIR || (process.platform === 'linux' && process.env?.NODE_ENV === 'production'))) {
     defaultLocal = 'file:/tmp/local.db';
@@ -29,11 +323,33 @@ export function getTursoClient(): Client {
                     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
                     undefined;
 
-  tursoClient = createClient({
-    url,
-    authToken: authToken || undefined,
-  });
+  if (isRemoteLibsqlUrl(url)) {
+    try {
+      tursoClient = createClient({
+        url,
+        authToken: authToken || undefined,
+      });
+      return tursoClient;
+    } catch (err) {
+      console.warn('Failed to connect to remote Turso database, falling back to local client:', err);
+    }
+  }
 
+  // Node.js server environment (Server Actions) can use @libsql/client with file:
+  if (typeof window === 'undefined') {
+    try {
+      tursoClient = createClient({
+        url: url || defaultLocal,
+        authToken: authToken || undefined,
+      });
+      return tursoClient;
+    } catch (e) {
+      // Fallback
+    }
+  }
+
+  // In Browser / Electron renderer environment when no remote URL is present:
+  tursoClient = createWebLocalClient();
   return tursoClient;
 }
 

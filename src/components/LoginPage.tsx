@@ -47,14 +47,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         
         {/* App Logo & Official Branding Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 text-white rounded-2xl p-3 mb-4 shadow-md shadow-slate-900/10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white border border-slate-200 rounded-2xl p-2.5 mb-4 shadow-md shadow-slate-900/5">
             <img
-              src="/drone_battery_app_icon.png"
+              src="./drone_battery_app_icon.svg"
               alt="Logo"
               className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
             />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
