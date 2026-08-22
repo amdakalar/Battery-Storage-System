@@ -19,6 +19,7 @@ import {
   saveSettings,
   exportDataJSON,
   importDataJSON,
+  extractBatteriesFromJSON,
   loadDeletionLogs,
   clearAllSystemData,
   clearDeletionLogs,
@@ -297,7 +298,7 @@ export default function App() {
     if (!currentUser) return;
     try {
       const cloudBatteries = await getBatteriesAction();
-      if (cloudBatteries && cloudBatteries.length > 0) {
+      if (Array.isArray(cloudBatteries)) {
         setBatteries((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(cloudBatteries)) {
             saveBatteries(cloudBatteries);
@@ -305,18 +306,6 @@ export default function App() {
           }
           return prev;
         });
-      } else {
-        // If cloud returned 0 batteries (e.g. fresh database / container reset),
-        // check if we have local cached batteries to auto-restore and protect
-        const localCached = loadBatteries();
-        if (localCached && localCached.length > 0) {
-          await importBatteriesAction(localCached, currentUser.id, currentUser.fullName);
-          const restored = await getBatteriesAction();
-          if (restored && restored.length > 0) {
-            setBatteries(restored);
-            saveBatteries(restored);
-          }
-        }
       }
     } catch (e) {
       console.error('Silent sync error:', e);
@@ -334,18 +323,13 @@ export default function App() {
       setBatteries(cached);
     }
 
-    // 2. Fetch and sync cloud
+    // 2. Fetch and sync cloud (Cloud is authoritative)
     (async () => {
       try {
         const cloudBatteries = await getBatteriesAction();
-        if (isMounted) {
-          if (cloudBatteries && cloudBatteries.length > 0) {
-            setBatteries(cloudBatteries);
-            saveBatteries(cloudBatteries);
-          } else if (cached && cached.length > 0) {
-            // Auto-restore local data into cloud
-            await importBatteriesAction(cached, currentUser.id, currentUser.fullName);
-          }
+        if (isMounted && Array.isArray(cloudBatteries)) {
+          setBatteries(cloudBatteries);
+          saveBatteries(cloudBatteries);
         }
       } catch (error) {
         console.error('Error loading batteries from Turso:', error);
@@ -378,7 +362,7 @@ export default function App() {
   }, [currentUser]);
 
   // Live Auto-Refresh:
-  // Automatically re-fetch latest data when switching tabs (activeView), focusing window, or every 15 seconds
+  // Automatically re-fetch latest data when switching tabs (activeView), focusing window, or every 4 seconds
   useEffect(() => {
     if (!currentUser) return;
 
@@ -399,10 +383,10 @@ export default function App() {
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
 
-    // Periodic live sync every 15 seconds so changes from all team members appear live
+    // Periodic live sync every 4 seconds so edits and deletions from any device appear live
     const liveInterval = setInterval(() => {
       syncBatteriesSilently();
-    }, 15000);
+    }, 4000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
@@ -819,20 +803,45 @@ export default function App() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           const content = event.target?.result as string;
-          if (content && importDataJSON(content)) {
-            setBatteries(loadBatteries());
+          if (!content) return;
+
+          const extracted = extractBatteriesFromJSON(content);
+          if (extracted && extracted.batteries && extracted.batteries.length >= 0) {
+            importDataJSON(content);
+            setBatteries(extracted.batteries);
+            playSoundEffect('success');
+
+            // Immediately upload and persist all imported batteries & charge histories to Turso cloud
+            try {
+              await importBatteriesAction(
+                extracted.batteries,
+                currentUser?.id,
+                currentUser?.fullName
+              );
+              // Re-fetch from cloud to ensure total consistency
+              const synced = await getBatteriesAction();
+              if (synced && synced.length > 0) {
+                setBatteries(synced);
+                saveBatteries(synced);
+              }
+            } catch (err) {
+              console.error('Failed to sync imported batteries to cloud:', err);
+            }
+
             showAlert({
               type: 'success',
               title: 'هێنانی داتا (Import JSON)',
-              message: 'دراوەکان بە سەرکەوتوویی هێنرانە ناو سیستەمەکەوە و باترییەکان نوێکرانەوە.',
+              message: `کۆی ${extracted.batteries.length} باتری بە سەرکەوتوویی لەگەڵ مێژوو و زانیارییەکانی هاوردەکران و لەسەر دەیتابەیسی هەور پاشەکەوتکران.`,
+              confirmText: 'باشە',
             });
           } else {
             showAlert({
               type: 'error',
               title: 'هەڵە لە خوێندنەوەی پەڕگە',
-              message: 'هەڵەیەک لە خوێندنەوەی پەڕگەی پشتیوان ڕوویدا. تکایە دڵنیابەرەوە لە دروستی فایلەکە.',
+              message: 'فۆرماتی فایلی JSON نەناسراوە یان هیچ داتایەکی باتری تێدا نەدۆزرایەوە.',
+              confirmText: 'داخستن',
             });
           }
         };

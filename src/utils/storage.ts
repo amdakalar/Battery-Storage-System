@@ -225,22 +225,62 @@ export function exportDataJSON(): string {
 }
 
 /**
+ * Extract batteries from any valid backup JSON string
+ */
+export function extractBatteriesFromJSON(jsonStr: string): {
+  batteries: Battery[];
+  settings?: any;
+  categories?: any;
+} | null {
+  try {
+    const data = JSON.parse(jsonStr);
+    let extractedBatteries: Battery[] | null = null;
+    let extractedSettings: any = null;
+    let extractedCategories: any = null;
+
+    if (Array.isArray(data)) {
+      extractedBatteries = data;
+    } else if (data && typeof data === 'object') {
+      if (Array.isArray(data.batteries)) {
+        extractedBatteries = data.batteries;
+      } else if (data.data && Array.isArray(data.data.batteries)) {
+        extractedBatteries = data.data.batteries;
+      } else if (data.data && Array.isArray(data.data)) {
+        extractedBatteries = data.data;
+      } else if (Array.isArray(data.items)) {
+        extractedBatteries = data.items;
+      }
+
+      if (data.settings) extractedSettings = data.settings;
+      if (data.categories && Array.isArray(data.categories)) extractedCategories = data.categories;
+    }
+
+    if (extractedBatteries && Array.isArray(extractedBatteries)) {
+      return {
+        batteries: extractedBatteries,
+        settings: extractedSettings,
+        categories: extractedCategories,
+      };
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to parse backup JSON:', e);
+    return null;
+  }
+}
+
+/**
  * Import data from JSON string
  */
 export function importDataJSON(jsonStr: string): boolean {
-  try {
-    const data = JSON.parse(jsonStr);
-    if (data && Array.isArray(data.batteries)) {
-      saveBatteries(data.batteries);
-      if (data.settings) saveSettings(data.settings);
-      if (data.categories && Array.isArray(data.categories)) saveCategories(data.categories);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    console.error('Failed to parse import JSON:', e);
-    return false;
+  const result = extractBatteriesFromJSON(jsonStr);
+  if (result && result.batteries) {
+    saveBatteries(result.batteries);
+    if (result.settings) saveSettings(result.settings);
+    if (result.categories) saveCategories(result.categories);
+    return true;
   }
+  return false;
 }
 
 const DELETION_LOGS_KEY = 'kurdish_battery_deletion_logs_v1';
