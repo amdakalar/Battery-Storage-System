@@ -1,4 +1,8 @@
 {
+  "name": "storage",
   "framework": "nextjs",
-  "buildCommand": "npm run build:web"
+  "buildCommand": "npm run build:web",
+  "alias": [
+    "storage.vercel.app"
+  ]
 }
