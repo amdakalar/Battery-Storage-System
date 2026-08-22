@@ -102,9 +102,16 @@ export const CompactBatteryCard: React.FC<CompactBatteryCardProps> = ({
           >
             {battery.name}
           </h3>
-          <span className="inline-block text-[10px] font-medium text-slate-500 mt-0.5">
-            {catObj?.name || catId}
-          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="inline-block text-[10px] font-medium text-slate-500">
+              {catObj?.name || catId}
+            </span>
+            {battery.authorName && (
+              <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 border border-teal-200/60">
+                👤 {battery.authorName}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Options Menu */}

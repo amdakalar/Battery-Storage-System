@@ -106,6 +106,12 @@ export const BatteryCard: React.FC<BatteryCardProps> = ({
                     ? 'یو پی ئێس'
                     : 'باتری گشتی'}
                 </span>
+                {battery.authorName && (
+                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200/70 flex items-center gap-1">
+                    <span>👤</span>
+                    <span>{battery.authorName}</span>
+                  </span>
+                )}
                 <span className="text-xs text-slate-400 font-medium">
                   خولی بیرخەرەوە: {battery.reminderIntervalDays} ڕۆژ
                 </span>

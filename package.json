@@ -32,6 +32,7 @@
     "@google/genai": "^2.4.0",
     "@heroicons/react": "^2.2.0",
     "@libsql/client": "^0.17.4",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "next": "^16.3.2",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",

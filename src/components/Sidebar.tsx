@@ -33,6 +33,7 @@ interface SidebarProps {
   onOpenUpdateModal?: () => void;
   currentUser?: User | null;
   onOpenAdminModal?: () => void;
+  onOpenChangelog?: () => void;
   pendingUsersCount?: number;
   onLogout?: () => void;
 }
@@ -77,6 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenUpdateModal,
   currentUser,
   onOpenAdminModal,
+  onOpenChangelog,
   pendingUsersCount,
   onLogout,
 }) => {
@@ -239,9 +241,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </ul>
 
-        {/* ───── Admin Management Button ───── */}
-        {currentUser?.role === 'ADMIN' && (
-          <div className="mt-4 pt-3 border-t border-white/5">
+        {/* ───── Changelog / Activity History Button ───── */}
+        <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5">
+          <button
+            onClick={onOpenChangelog}
+            title={isCollapsed ? 'مێژووی گۆڕانکارییەکان' : undefined}
+            className={`w-full flex items-center rounded-xl transition-all duration-200 cursor-pointer group ${
+              isCollapsed ? 'justify-center p-3' : 'px-3.5 py-2.5 gap-3'
+            }`}
+            style={{
+              background: 'rgba(20, 184, 166, 0.08)',
+              border: '1px solid rgba(20, 184, 166, 0.2)',
+            }}
+          >
+            <div className="w-6 h-6 shrink-0 flex items-center justify-center text-teal-400 group-hover:text-teal-300">
+              <ClockIcon className="w-5 h-5" />
+            </div>
+            {!isCollapsed && (
+              <span className="flex-1 text-[12.5px] font-bold text-slate-200 group-hover:text-teal-200 text-right">
+                مێژووی گۆڕانکارییەکان
+              </span>
+            )}
+          </button>
+
+          {/* ───── Admin Management Button ───── */}
+          {currentUser?.role === 'ADMIN' && (
             <button
               onClick={onOpenAdminModal}
               title={isCollapsed ? 'بەڕێوەبردنی بەکارهێنەران' : undefined}
@@ -269,8 +293,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </>
               )}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </nav>
 
       {/* ───── User Profile & Logout Strip ───── */}

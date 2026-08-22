@@ -7,6 +7,7 @@ export type StatusType = 'ON_TIME' | 'EARLY_WARNING' | 'TIME_TO_CHARGE' | 'OVERD
 
 export type UserRole = 'ADMIN' | 'USER';
 export type UserStatus = 'PENDING' | 'ACTIVE' | 'BLOCKED';
+export type WorkspaceViewMode = 'TEAM' | 'PERSONAL';
 
 export interface User {
   id: string;
@@ -20,10 +21,33 @@ export interface User {
   lastLoginAt?: string;
 }
 
+export interface ActivityLog {
+  id: string;
+  timestamp: string;
+  action:
+    | 'BATTERY_ADD'
+    | 'BATTERY_UPDATE'
+    | 'BATTERY_CHARGE'
+    | 'BATTERY_DELETE'
+    | 'USER_REGISTER'
+    | 'USER_APPROVE'
+    | 'USER_ROLE_CHANGE'
+    | 'USER_BLOCK'
+    | 'SYSTEM_RESET';
+  actionTitle: string;
+  performedBy: string; // User full name
+  performedByUsername?: string;
+  performedById?: string;
+  targetName?: string;
+  details?: string;
+  meta?: any;
+}
+
 export interface ChargeRecord {
   id: string;
   batteryId: string;
   userId?: string;
+  authorName?: string;
   chargeDate: string; // ISO format string YYYY-MM-DD
   chargeTime?: string; // HH:mm format
   daysSincePrevious?: number;
@@ -34,6 +58,7 @@ export interface ChargeRecord {
 export interface Battery {
   id: string;
   userId?: string;
+  authorName?: string;
   name: string;
   category: 'DRONE' | 'CAR' | 'SOLAR' | 'UPS' | 'SCOOTER' | 'GENERAL' | string;
   lastChargeDate: string; // ISO YYYY-MM-DD

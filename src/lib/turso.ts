@@ -47,6 +47,7 @@ export async function initTursoTables(): Promise<void> {
     `CREATE TABLE IF NOT EXISTS batteries (
       id TEXT PRIMARY KEY,
       userId TEXT,
+      authorName TEXT,
       name TEXT NOT NULL,
       category TEXT NOT NULL,
       lastChargeDate TEXT NOT NULL,
@@ -63,6 +64,7 @@ export async function initTursoTables(): Promise<void> {
       id TEXT PRIMARY KEY,
       batteryId TEXT NOT NULL,
       userId TEXT,
+      authorName TEXT,
       chargeDate TEXT NOT NULL,
       chargeTime TEXT,
       daysSincePrevious INTEGER,
@@ -80,6 +82,10 @@ export async function initTursoTables(): Promise<void> {
       id TEXT PRIMARY KEY,
       timestamp TEXT NOT NULL,
       action TEXT NOT NULL,
+      actionTitle TEXT,
+      performedBy TEXT,
+      performedById TEXT,
+      targetName TEXT,
       details TEXT,
       meta_json TEXT
     );`,
@@ -88,18 +94,26 @@ export async function initTursoTables(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_batteries_userId ON batteries (userId);`,
     `CREATE INDEX IF NOT EXISTS idx_charge_history_batteryId ON charge_history (batteryId);`,
     `CREATE INDEX IF NOT EXISTS idx_batteries_createdAt ON batteries (createdAt DESC);`,
+    `CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC);`,
   ]);
 
   // Safe incremental migrations for existing tables
-  try {
-    await client.execute(`ALTER TABLE batteries ADD COLUMN userId TEXT;`);
-  } catch (e) {
-    // Column already exists
-  }
+  const migrations = [
+    `ALTER TABLE batteries ADD COLUMN userId TEXT;`,
+    `ALTER TABLE batteries ADD COLUMN authorName TEXT;`,
+    `ALTER TABLE charge_history ADD COLUMN userId TEXT;`,
+    `ALTER TABLE charge_history ADD COLUMN authorName TEXT;`,
+    `ALTER TABLE audit_logs ADD COLUMN actionTitle TEXT;`,
+    `ALTER TABLE audit_logs ADD COLUMN performedBy TEXT;`,
+    `ALTER TABLE audit_logs ADD COLUMN performedById TEXT;`,
+    `ALTER TABLE audit_logs ADD COLUMN targetName TEXT;`,
+  ];
 
-  try {
-    await client.execute(`ALTER TABLE charge_history ADD COLUMN userId TEXT;`);
-  } catch (e) {
-    // Column already exists
+  for (const query of migrations) {
+    try {
+      await client.execute(query);
+    } catch (e) {
+      // Column already exists
+    }
   }
 }

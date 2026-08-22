@@ -1,5 +1,6 @@
 'use server';
 
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getTursoClient, initTursoTables } from '@/src/lib/turso';
 import { User, UserRole, UserStatus } from '@/src/types';
@@ -14,10 +15,58 @@ async function ensureTables() {
 }
 
 /**
- * Hash password with SHA-256 and constant salt
+ * Hash password securely using bcrypt with fallback support
  */
-function hashPassword(password: string, salt: string = 'storage_salt_v1'): string {
-  return crypto.createHash('sha256').update(`${password}:${salt}`).digest('hex');
+async function hashPasswordBcrypt(password: string): Promise<string> {
+  return await bcrypt.hash(password, 10);
+}
+
+/**
+ * Compare plain password against bcrypt hash (or fallback sha256)
+ */
+async function verifyPassword(password: string, hashOrDigest: string): Promise<boolean> {
+  if (hashOrDigest.startsWith('$2a$') || hashOrDigest.startsWith('$2b$')) {
+    return await bcrypt.compare(password, hashOrDigest);
+  }
+  // Fallback for legacy sha256 hash
+  const legacyHash = crypto.createHash('sha256').update(`${password}:storage_salt_v1`).digest('hex');
+  return legacyHash === hashOrDigest;
+}
+
+/**
+ * Log activity in audit_logs table
+ */
+async function logActivity(
+  action: string,
+  actionTitle: string,
+  performedBy: string,
+  performedById?: string,
+  targetName?: string,
+  details?: string,
+  meta?: any
+) {
+  try {
+    const client = getTursoClient();
+    const id = `act_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const timestamp = new Date().toISOString();
+    await client.execute({
+      sql: `INSERT INTO audit_logs (id, timestamp, action, actionTitle, performedBy, performedById, targetName, details, meta_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        timestamp,
+        action,
+        actionTitle,
+        performedBy,
+        performedById || null,
+        targetName || null,
+        details || null,
+        meta ? JSON.stringify(meta) : null,
+      ],
+    });
+  } catch (e) {
+    console.error('Failed to log audit activity:', e);
+  }
 }
 
 /**
@@ -72,7 +121,7 @@ export async function registerUserAction(data: {
     const role: UserRole = isFirstUser ? 'ADMIN' : 'USER';
     const status: UserStatus = isFirstUser ? 'ACTIVE' : 'PENDING';
     const createdAt = new Date().toISOString();
-    const passwordHash = hashPassword(password);
+    const passwordHash = await hashPasswordBcrypt(password);
 
     await client.execute({
       sql: `INSERT INTO users (
@@ -104,6 +153,16 @@ export async function registerUserAction(data: {
       lastLoginAt: isFirstUser ? createdAt : undefined,
     };
 
+    // Log registration activity
+    await logActivity(
+      'USER_REGISTER',
+      isFirstUser ? 'دروستکردنی یەکەم بەڕێوەبەری سەرەکی (Admin)' : 'خۆتۆمارکردنی بەکارهێنەری نوێ (چاوەڕوانی پەسەندکردن)',
+      fullName,
+      id,
+      `@${username}`,
+      `هەژماری نوێ دروستکرا لەگەڵ دەسەڵاتی ${role} و دۆخی ${status}`
+    );
+
     return {
       success: true,
       isFirstAdmin: isFirstUser,
@@ -117,7 +176,7 @@ export async function registerUserAction(data: {
 }
 
 /**
- * Log in with username and password
+ * Log in with username and password (using bcrypt verification)
  */
 export async function loginUserAction(data: {
   username: string;
@@ -146,9 +205,9 @@ export async function loginUserAction(data: {
     }
 
     const row: any = result.rows[0];
-    const passwordHash = hashPassword(password);
+    const passwordMatches = await verifyPassword(password, String(row.passwordHash));
 
-    if (String(row.passwordHash) !== passwordHash) {
+    if (!passwordMatches) {
       return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
     }
 
@@ -196,6 +255,45 @@ export async function loginUserAction(data: {
   } catch (err: any) {
     console.error('Error logging in:', err);
     return { success: false, error: err.message || 'هەڵەیەک ڕوویدا لە کاتی چوونەژوورەوە' };
+  }
+}
+
+/**
+ * Verify saved persistent session
+ */
+export async function verifySessionAction(userId: string): Promise<{
+  valid: boolean;
+  user?: User;
+}> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    const result = await client.execute({
+      sql: `SELECT id, username, fullName, role, status, createdAt, approvedBy, approvedAt, lastLoginAt FROM users WHERE id = ? LIMIT 1`,
+      args: [userId],
+    });
+
+    if (result.rows.length === 0) return { valid: false };
+
+    const row: any = result.rows[0];
+    if (row.status !== 'ACTIVE') return { valid: false };
+
+    const user: User = {
+      id: String(row.id),
+      username: String(row.username),
+      fullName: String(row.fullName),
+      role: String(row.role) as UserRole,
+      status: String(row.status) as UserStatus,
+      createdAt: String(row.createdAt),
+      approvedBy: row.approvedBy ? String(row.approvedBy) : undefined,
+      approvedAt: row.approvedAt ? String(row.approvedAt) : undefined,
+      lastLoginAt: row.lastLoginAt ? String(row.lastLoginAt) : undefined,
+    };
+
+    return { valid: true, user };
+  } catch (e) {
+    return { valid: false };
   }
 }
 
@@ -264,19 +362,41 @@ export async function updateUserStatusAction(
       return { success: false, error: 'دەسەڵاتی ئادمین پێویستە' };
     }
 
+    const adminName = String(adminCheck.rows[0].fullName || 'Admin');
+    const targetUserRes = await client.execute({
+      sql: `SELECT fullName, username FROM users WHERE id = ? LIMIT 1`,
+      args: [targetUserId],
+    });
+    const targetName = targetUserRes.rows[0]?.fullName ? String(targetUserRes.rows[0].fullName) : targetUserId;
+
     const now = new Date().toISOString();
-    const approvedBy = String(adminCheck.rows[0].fullName || 'Admin');
 
     if (newStatus === 'ACTIVE') {
       await client.execute({
         sql: `UPDATE users SET status = ?, approvedBy = ?, approvedAt = ? WHERE id = ?`,
-        args: [newStatus, approvedBy, now, targetUserId],
+        args: [newStatus, adminName, now, targetUserId],
       });
+      await logActivity(
+        'USER_APPROVE',
+        'پەسەندکردنی هەژماری بەکارهێنەر',
+        adminName,
+        adminUserId,
+        targetName,
+        `هەژماری "${targetName}" لەلایەن بەڕێوەبەر پەسەند و چالاک کرا`
+      );
     } else {
       await client.execute({
         sql: `UPDATE users SET status = ? WHERE id = ?`,
         args: [newStatus, targetUserId],
       });
+      await logActivity(
+        'USER_BLOCK',
+        'ڕاگرتنی هەژماری بەکارهێنەر',
+        adminName,
+        adminUserId,
+        targetName,
+        `هەژماری "${targetName}" لەلایەن بەڕێوەبەرەوە ڕاگیرا`
+      );
     }
 
     return { success: true };
@@ -300,7 +420,7 @@ export async function updateUserRoleAction(
 
     // Verify admin
     const adminCheck = await client.execute({
-      sql: `SELECT role FROM users WHERE id = ? LIMIT 1`,
+      sql: `SELECT role, fullName FROM users WHERE id = ? LIMIT 1`,
       args: [adminUserId],
     });
 
@@ -308,10 +428,26 @@ export async function updateUserRoleAction(
       return { success: false, error: 'دەسەڵاتی ئادمین پێویستە' };
     }
 
+    const adminName = String(adminCheck.rows[0].fullName || 'Admin');
+    const targetUserRes = await client.execute({
+      sql: `SELECT fullName FROM users WHERE id = ? LIMIT 1`,
+      args: [targetUserId],
+    });
+    const targetName = targetUserRes.rows[0]?.fullName ? String(targetUserRes.rows[0].fullName) : targetUserId;
+
     await client.execute({
       sql: `UPDATE users SET role = ? WHERE id = ?`,
       args: [newRole, targetUserId],
     });
+
+    await logActivity(
+      'USER_ROLE_CHANGE',
+      'گۆڕینی دەسەڵاتی بەکارهێنەر',
+      adminName,
+      adminUserId,
+      targetName,
+      `دەسەڵاتی بەکارهێنەر "${targetName}" گۆڕدرا بۆ ${newRole === 'ADMIN' ? 'ئادمین' : 'بەکارهێنەری ئاسایی'}`
+    );
 
     return { success: true };
   } catch (err: any) {
@@ -338,13 +474,20 @@ export async function deleteUserAction(
 
     // Verify admin
     const adminCheck = await client.execute({
-      sql: `SELECT role FROM users WHERE id = ? LIMIT 1`,
+      sql: `SELECT role, fullName FROM users WHERE id = ? LIMIT 1`,
       args: [adminUserId],
     });
 
     if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'ADMIN') {
       return { success: false, error: 'دەسەڵاتی ئادمین پێویستە' };
     }
+
+    const adminName = String(adminCheck.rows[0].fullName || 'Admin');
+    const targetUserRes = await client.execute({
+      sql: `SELECT fullName FROM users WHERE id = ? LIMIT 1`,
+      args: [targetUserId],
+    });
+    const targetName = targetUserRes.rows[0]?.fullName ? String(targetUserRes.rows[0].fullName) : targetUserId;
 
     await client.batch([
       {
@@ -360,6 +503,15 @@ export async function deleteUserAction(
         args: [targetUserId],
       },
     ]);
+
+    await logActivity(
+      'SYSTEM_RESET',
+      'سڕینەوەی هەژماری بەکارهێنەر',
+      adminName,
+      adminUserId,
+      targetName,
+      `هەژماری "${targetName}" لە سیستەم سڕایەوە لەگەڵ داتاکانی`
+    );
 
     return { success: true };
   } catch (err: any) {

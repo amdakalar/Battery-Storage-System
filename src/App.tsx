@@ -52,7 +52,8 @@ import { DroneCategoryInfo, loadCategories, addCustomCategory, updateCategory, d
 import { APP_CONFIG } from './constants/appConfig';
 import { LoginPage } from './components/LoginPage';
 import { AdminUsersModal } from './components/AdminUsersModal';
-import { getPendingUsersCountAction } from './actions/authActions';
+import { ChangelogModal } from './components/ChangelogModal';
+import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
 import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction } from './actions/batteryActions';
 import {
   BoltIcon,
@@ -116,7 +117,26 @@ export default function App() {
     return null;
   });
   const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
+  const [isChangelogModalOpen, setIsChangelogModalOpen] = useState(false);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
+
+  // Workspace Data Mode: 'TEAM' (collaborative team view) vs 'PERSONAL' (my batteries only)
+  const [workspaceMode, setWorkspaceMode] = useState<'TEAM' | 'PERSONAL'>('TEAM');
+
+  // Auto-verify persistent session on app mount
+  useEffect(() => {
+    if (currentUser?.id) {
+      verifySessionAction(currentUser.id).then((res) => {
+        if (!res.valid) {
+          setCurrentUser(null);
+          localStorage.removeItem('storage_auth_user');
+        } else if (res.user) {
+          setCurrentUser(res.user);
+          localStorage.setItem('storage_auth_user', JSON.stringify(res.user));
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   const refreshPendingCount = async () => {
     if (currentUser && currentUser.role === 'ADMIN') {
@@ -251,7 +271,7 @@ export default function App() {
     let isMounted = true;
     (async () => {
       try {
-        const cloudBatteries = await getBatteriesAction(currentUser.id, currentUser.role === 'ADMIN');
+        const cloudBatteries = await getBatteriesAction();
         if (isMounted && cloudBatteries && cloudBatteries.length >= 0) {
           setBatteries(cloudBatteries);
           saveBatteries(cloudBatteries);
@@ -362,10 +382,12 @@ export default function App() {
         id: 'hist_' + Date.now(),
         batteryId,
         userId: currentUser?.id,
+        authorName: currentUser?.fullName,
         chargeDate: todayToUse,
         notes: 'ستۆرجکرا لەم ڕێکەوتەدا',
       },
-      currentUser?.id
+      currentUser?.id,
+      currentUser?.fullName
     ).catch(() => {});
   };
 
@@ -379,10 +401,12 @@ export default function App() {
         id: 'hist_' + Date.now(),
         batteryId,
         userId: currentUser?.id,
+        authorName: currentUser?.fullName,
         chargeDate: customDate,
         notes: notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو',
       },
-      currentUser?.id
+      currentUser?.id,
+      currentUser?.fullName
     ).catch(() => {});
   };
 
@@ -403,12 +427,14 @@ export default function App() {
       ...data,
       id,
       userId: currentUser?.id,
+      authorName: currentUser?.fullName,
       createdAt: today,
       history: [
         {
           id: 'hist_init_' + Date.now(),
           batteryId: id,
           userId: currentUser?.id,
+          authorName: currentUser?.fullName,
           chargeDate: data.lastChargeDate || today,
           notes: 'دروستکردنی ڕیکۆرد و یەکەم ستۆرج',
         },
@@ -419,7 +445,7 @@ export default function App() {
     setBatteries(updated);
     saveBatteries(updated);
     playSoundEffect('success');
-    saveBatteryAction(newBattery, currentUser?.id).catch(() => {});
+    saveBatteryAction(newBattery, currentUser?.id, currentUser?.fullName).catch(() => {});
   };
 
   // Custom In-App Alert Dialog Trigger
@@ -540,6 +566,10 @@ export default function App() {
     const updated = updateBattery(batteryId, updatedFields);
     setBatteries(updated);
     playSoundEffect('success');
+    const existing = updated.find((b) => b.id === batteryId);
+    if (existing) {
+      saveBatteryAction(existing, currentUser?.id, currentUser?.fullName).catch(() => {});
+    }
   };
 
   // Action: Clear All System Data & Save Log
@@ -584,6 +614,7 @@ export default function App() {
         setBatteries(updated);
         setDeletionLogs(loadDeletionLogs());
         playSoundEffect('success');
+        deleteBatteryAction(batteryId, currentUser?.id, currentUser?.fullName, currentUser?.role === 'ADMIN').catch(() => {});
       },
     });
   };
@@ -731,14 +762,16 @@ export default function App() {
 
   const renderBatteriesContent = () => {
     const filteredBatteries = batteries.filter((b) => {
+      const matchesWorkspace = workspaceMode === 'TEAM' || !currentUser || b.userId === currentUser.id;
       const matchesTab = selectedCategoryTab === 'ALL' || getNormalizedCategory(b.category, categories) === selectedCategoryTab;
       const q = searchQuery.trim().toLowerCase();
       const matchesQuery = !q || (
         b.name.toLowerCase().includes(q) ||
         (b.notes && b.notes.toLowerCase().includes(q)) ||
-        (b.category && b.category.toLowerCase().includes(q))
+        (b.category && b.category.toLowerCase().includes(q)) ||
+        (b.authorName && b.authorName.toLowerCase().includes(q))
       );
-      return matchesTab && matchesQuery;
+      return matchesWorkspace && matchesTab && matchesQuery;
     });
 
     const statusCounts = {
@@ -1838,6 +1871,7 @@ export default function App() {
           onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
           currentUser={currentUser}
           onOpenAdminModal={() => setIsAdminUsersModalOpen(true)}
+          onOpenChangelog={() => setIsChangelogModalOpen(true)}
           pendingUsersCount={pendingUsersCount}
           onLogout={handleLogout}
         />
@@ -1902,7 +1936,37 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  <div className="relative w-64">
+                  {/* Team vs Personal Workspace Switcher */}
+                  <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+                    <button
+                      onClick={() => setWorkspaceMode('TEAM')}
+                      className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                        workspaceMode === 'TEAM'
+                          ? 'bg-white text-emerald-800 shadow-xs font-black'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <span>👥 تیمی هاوبەش</span>
+                      <span className="text-[10px] bg-slate-200/80 px-1.5 py-0.2 rounded-md text-slate-700 font-mono">
+                        {batteries.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setWorkspaceMode('PERSONAL')}
+                      className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                        workspaceMode === 'PERSONAL'
+                          ? 'bg-white text-indigo-800 shadow-xs font-black'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <span>👤 باترییەکانم</span>
+                      <span className="text-[10px] bg-slate-200/80 px-1.5 py-0.2 rounded-md text-slate-700 font-mono">
+                        {batteries.filter((b) => b.userId === currentUser?.id).length}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="relative w-60">
                     <MagnifyingGlassIcon className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
@@ -2118,18 +2182,38 @@ export default function App() {
                   setIsAddModalOpen(true);
                   setMobileMenuOpen(false);
                 }}
-                onExportData={handleExportData}
-                onImportData={handleImportData}
+                onExportData={() => {
+                  handleExportData();
+                  setMobileMenuOpen(false);
+                }}
+                onImportData={() => {
+                  handleImportData();
+                  setMobileMenuOpen(false);
+                }}
                 onOpenSimulator={() => {
                   setIsSimulatorOpen(true);
                   setMobileMenuOpen(false);
                 }}
                 isCollapsed={false}
-                onToggleCollapse={() => {}}
+                onToggleCollapse={() => setMobileMenuOpen(false)}
                 hasUpdate={!!updateCheckResult?.hasUpdate}
                 latestVersion={updateCheckResult?.latestVersion}
                 onOpenUpdateModal={() => {
                   setIsUpdateModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                currentUser={currentUser}
+                onOpenAdminModal={() => {
+                  setIsAdminUsersModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                onOpenChangelog={() => {
+                  setIsChangelogModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+                pendingUsersCount={pendingUsersCount}
+                onLogout={() => {
+                  handleLogout();
                   setMobileMenuOpen(false);
                 }}
               />
@@ -2281,6 +2365,11 @@ export default function App() {
           onUserListChange={refreshPendingCount}
         />
       )}
+
+      <ChangelogModal
+        isOpen={isChangelogModalOpen}
+        onClose={() => setIsChangelogModalOpen(false)}
+      />
 
     </div>
   );

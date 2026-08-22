@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface LoginPageProps {
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess: (user: User, rememberMe?: boolean) => void;
 }
 
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
@@ -24,6 +24,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingNotice, setPendingNotice] = useState<string | null>(null);
@@ -40,18 +41,18 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       if (mode === 'login') {
         const res = await loginUserAction({ username, password });
         if (res.success && res.user) {
-          onLoginSuccess(res.user);
+          onLoginSuccess(res.user, rememberMe);
         } else if (res.isPending) {
           setPendingNotice(res.error || 'هەژمارەکەت چاوەڕوانی پەسەندکردنی بەڕێوەبەر (ئادمین) دەکات.');
         } else {
-          setError(res.error || 'هەڵەیەک لە چوونەژوورەوە ڕوویدا');
+          setError(res.error || 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە');
         }
       } else {
         const res = await registerUserAction({ username, fullName, password });
         if (res.success && res.user) {
           if (res.isFirstAdmin) {
             setRegisterSuccess('پیرۆزە! هەژمارەکەت وەک یەکەم بەڕێوەبەری سەرەکی (Admin) تۆمارکرا و چالاکە.');
-            setTimeout(() => onLoginSuccess(res.user!), 1200);
+            setTimeout(() => onLoginSuccess(res.user!, rememberMe), 1000);
           } else {
             setPendingNotice('هەژمارەکەت بە سەرکەوتوویی دروستکرا! تکایە چاوەڕوانی بەڕێوەبەر بە تاوەکو هەژمارەکەت پەسەند و چالاک دەکات.');
             setMode('login');
@@ -69,35 +70,34 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans select-none" dir="rtl">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-sans select-none" dir="rtl">
       {/* Background ambient lighting effects */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-3xl p-8 shadow-2xl relative z-10 animate-fade-in">
+      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-2xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 animate-fade-in">
         {/* App Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-emerald-500/20 to-indigo-500/20 border border-emerald-500/30 rounded-2xl p-2 mb-4 shadow-lg shadow-emerald-950/40">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-2xl p-2 mb-3 shadow-lg shadow-emerald-950/40">
             <img
               src="/drone_battery_app_icon.png"
               alt="Logo"
               className="w-full h-full object-contain drop-shadow-md"
               onError={(e) => {
-                // Fallback icon if image fails
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             سیستەمی بەڕێوەبردنی ستۆرج
           </h1>
           <p className="text-xs text-slate-400 font-medium mt-1">
-            {mode === 'login' ? 'تکایە بچۆ ژوورەوە بۆ دەستپێگەیشتن بە داتاکانت' : 'هەژمارێکی نوێ دروستبکە بۆ سیستەم'}
+            {mode === 'login' ? 'تکایە بچۆ ژوورەوە بۆ دەستپێگەیشتن بە سیستەمی کۆگا' : 'هەژمارێکی نوێ دروستبکە بۆ سیستەم'}
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-slate-950/60 p-1 rounded-2xl border border-slate-800/80 mb-6">
+        <div className="flex bg-slate-950/70 p-1 rounded-2xl border border-slate-800/80 mb-5">
           <button
             type="button"
             onClick={() => {
@@ -105,7 +105,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               setError(null);
               setPendingNotice(null);
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'login'
                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
                 : 'text-slate-400 hover:text-slate-200'
@@ -121,7 +121,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               setError(null);
               setPendingNotice(null);
             }}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
               mode === 'register'
                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
                 : 'text-slate-400 hover:text-slate-200'
@@ -134,14 +134,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         {/* Alerts & Notifications */}
         {error && (
-          <div className="mb-5 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
+          <div className="mb-4 bg-rose-500/10 border border-rose-500/30 text-rose-400 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
             <ExclamationTriangleIcon className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {pendingNotice && (
-          <div className="mb-5 bg-amber-500/10 border border-amber-500/30 text-amber-300 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
+          <div className="mb-4 bg-amber-500/10 border border-amber-500/30 text-amber-300 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
             <ClockIcon className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
             <div className="space-y-1">
               <p className="font-black text-amber-200">چاوەڕوانی پەسەندکردن</p>
@@ -151,14 +151,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         )}
 
         {registerSuccess && (
-          <div className="mb-5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
+          <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3.5 rounded-2xl text-xs font-bold flex items-start gap-2.5 animate-slide-up">
             <CheckCircleIcon className="w-5 h-5 shrink-0 text-emerald-400 mt-0.5" />
             <span>{registerSuccess}</span>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'register' && (
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
@@ -171,7 +171,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="بۆ نموونە: ئەحمەد محەمەد"
-                  className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10"
                 />
                 <IdentificationIcon className="w-5 h-5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
@@ -189,7 +189,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="ناوی بەکارهێنەر بە ئینگلیزی..."
-                className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10 text-left dir-ltr"
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10 text-left dir-ltr"
                 dir="ltr"
               />
               <UserIcon className="w-5 h-5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -207,12 +207,27 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10 text-left dir-ltr"
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all pl-10 text-left dir-ltr"
                 dir="ltr"
               />
               <LockClosedIcon className="w-5 h-5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
           </div>
+
+          {/* Remember Me Option */}
+          {mode === 'login' && (
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-500 bg-slate-950 border-slate-800 focus:ring-0 cursor-pointer accent-emerald-500"
+                />
+                <span className="text-xs text-slate-300 font-medium">لەبیرم بهێڵەوە (Remember Me)</span>
+              </label>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -236,10 +251,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </form>
 
         {/* Footer info */}
-        <div className="mt-8 pt-6 border-t border-slate-800/80 text-center">
+        <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
             <ShieldCheckIcon className="w-4 h-4 text-emerald-400" />
-            <span>پارێزراوە بە سیستەمی دەسەڵاتەکانی بەکارهێنەر و هەور</span>
+            <span>پارێزراوە بە سێرڤەر ئەکشن و هاشکردنی پێشکەوتووی bcrypt</span>
           </div>
         </div>
       </div>

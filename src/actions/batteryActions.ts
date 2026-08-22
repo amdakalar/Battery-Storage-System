@@ -1,7 +1,7 @@
 'use server';
 
 import { getTursoClient, initTursoTables } from '@/src/lib/turso';
-import { Battery, ChargeRecord, AppSettings, DeletionLog } from '@/src/types';
+import { Battery, ChargeRecord, ActivityLog } from '@/src/types';
 import { getTodayISODate } from '@/src/utils/dateUtils';
 
 // Auto-initialize schema on server runtime
@@ -14,13 +14,48 @@ async function ensureTables() {
 }
 
 /**
+ * Log activity in audit_logs table
+ */
+async function logActivity(
+  action: ActivityLog['action'],
+  actionTitle: string,
+  performedBy: string,
+  performedById?: string,
+  targetName?: string,
+  details?: string,
+  meta?: any
+) {
+  try {
+    const client = getTursoClient();
+    const id = `act_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const timestamp = new Date().toISOString();
+    await client.execute({
+      sql: `INSERT INTO audit_logs (id, timestamp, action, actionTitle, performedBy, performedById, targetName, details, meta_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        timestamp,
+        action,
+        actionTitle,
+        performedBy || 'سیستەم',
+        performedById || null,
+        targetName || null,
+        details || null,
+        meta ? JSON.stringify(meta) : null,
+      ],
+    });
+  } catch (e) {
+    console.error('Failed to log audit activity:', e);
+  }
+}
+
+/**
  * Fetch batteries along with their charge history from Turso.
- * If user is ADMIN and no specific userId is given, returns all batteries in the system.
- * If regular user, filters by userId.
+ * If filterUserId is specified, returns only that user's batteries.
+ * Otherwise, returns all team batteries.
  */
 export async function getBatteriesAction(
-  userId?: string,
-  isAdmin: boolean = false
+  filterUserId?: string
 ): Promise<Battery[]> {
   await ensureTables();
   const client = getTursoClient();
@@ -28,17 +63,17 @@ export async function getBatteriesAction(
   let batteryRows: any;
   let historyRows: any;
 
-  if (isAdmin || !userId) {
+  if (!filterUserId) {
     batteryRows = await client.execute(`SELECT * FROM batteries ORDER BY createdAt DESC`);
     historyRows = await client.execute(`SELECT * FROM charge_history ORDER BY chargeDate DESC, chargeTime DESC`);
   } else {
     batteryRows = await client.execute({
-      sql: `SELECT * FROM batteries WHERE userId = ? OR userId IS NULL OR userId = '' ORDER BY createdAt DESC`,
-      args: [userId],
+      sql: `SELECT * FROM batteries WHERE userId = ? ORDER BY createdAt DESC`,
+      args: [filterUserId],
     });
     historyRows = await client.execute({
-      sql: `SELECT * FROM charge_history WHERE userId = ? OR userId IS NULL OR userId = '' ORDER BY chargeDate DESC, chargeTime DESC`,
-      args: [userId],
+      sql: `SELECT * FROM charge_history WHERE userId = ? ORDER BY chargeDate DESC, chargeTime DESC`,
+      args: [filterUserId],
     });
   }
 
@@ -50,6 +85,7 @@ export async function getBatteriesAction(
       id: String(row.id),
       batteryId: bId,
       userId: row.userId ? String(row.userId) : undefined,
+      authorName: row.authorName ? String(row.authorName) : undefined,
       chargeDate: String(row.chargeDate),
       chargeTime: row.chargeTime ? String(row.chargeTime) : undefined,
       daysSincePrevious: row.daysSincePrevious ? Number(row.daysSincePrevious) : undefined,
@@ -71,6 +107,7 @@ export async function getBatteriesAction(
     return {
       id: String(row.id),
       userId: row.userId ? String(row.userId) : undefined,
+      authorName: row.authorName ? String(row.authorName) : undefined,
       name: String(row.name),
       category: String(row.category),
       lastChargeDate: String(row.lastChargeDate),
@@ -88,11 +125,12 @@ export async function getBatteriesAction(
 }
 
 /**
- * Save (create or update) a battery in Turso with user isolation
+ * Save (create or update) a battery in Turso with activity changelog
  */
 export async function saveBatteryAction(
   battery: Battery,
-  currentUserId?: string
+  currentUserId?: string,
+  currentUserName?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await ensureTables();
@@ -100,12 +138,20 @@ export async function saveBatteryAction(
 
     const cellsJson = battery.cells ? JSON.stringify(battery.cells) : null;
     const ownerUserId = battery.userId || currentUserId || null;
+    const ownerName = battery.authorName || currentUserName || 'بەکارهێنەر';
+
+    // Check if battery already exists to distinguish Add vs Update
+    const existing = await client.execute({
+      sql: `SELECT id, name FROM batteries WHERE id = ? LIMIT 1`,
+      args: [battery.id],
+    });
+    const isUpdate = existing.rows.length > 0;
 
     await client.execute({
       sql: `INSERT INTO batteries (
-        id, userId, name, category, lastChargeDate, reminderIntervalDays,
+        id, userId, authorName, name, category, lastChargeDate, reminderIntervalDays,
         voltage, storagePercentage, notes, cells_json, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         category = excluded.category,
@@ -115,10 +161,12 @@ export async function saveBatteryAction(
         storagePercentage = excluded.storagePercentage,
         notes = excluded.notes,
         cells_json = excluded.cells_json,
+        authorName = COALESCE(batteries.authorName, excluded.authorName),
         userId = COALESCE(batteries.userId, excluded.userId);`,
       args: [
         battery.id,
         ownerUserId,
+        ownerName,
         battery.name,
         battery.category,
         battery.lastChargeDate,
@@ -131,6 +179,27 @@ export async function saveBatteryAction(
       ],
     });
 
+    // Log Activity Changelog
+    if (isUpdate) {
+      await logActivity(
+        'BATTERY_UPDATE',
+        'دەستکاریکردنی زانیاریی باتری',
+        ownerName,
+        ownerUserId || undefined,
+        battery.name,
+        `دەستکاری کرا بە ڤۆڵتیەی ${battery.voltage || '-'}V و ڕێژەی ${battery.storagePercentage || '-'}%`
+      );
+    } else {
+      await logActivity(
+        'BATTERY_ADD',
+        'زیادکردنی باتریی نوێ',
+        ownerName,
+        ownerUserId || undefined,
+        battery.name,
+        `باتریی نوێ تۆمارکرا بە هاوپۆلی "${battery.category}" و خولی ${battery.reminderIntervalDays} ڕۆژ`
+      );
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error('Error saving battery to Turso:', err);
@@ -139,27 +208,24 @@ export async function saveBatteryAction(
 }
 
 /**
- * Delete a battery and its history (with owner/admin permission check)
+ * Delete a battery and its history (with Changelog logging)
  */
 export async function deleteBatteryAction(
   batteryId: string,
   currentUserId?: string,
+  currentUserName?: string,
   isAdmin: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
-    // Check ownership if not admin
-    if (!isAdmin && currentUserId) {
-      const check = await client.execute({
-        sql: `SELECT userId FROM batteries WHERE id = ? LIMIT 1`,
-        args: [batteryId],
-      });
-      if (check.rows.length > 0 && check.rows[0].userId && check.rows[0].userId !== currentUserId) {
-        return { success: false, error: 'دەسەڵاتت نییە بۆ سڕینەوەی ئەم باترییە' };
-      }
-    }
+    // Check battery info for changelog
+    const existing = await client.execute({
+      sql: `SELECT name, userId FROM batteries WHERE id = ? LIMIT 1`,
+      args: [batteryId],
+    });
+    const batName = existing.rows[0]?.name ? String(existing.rows[0].name) : batteryId;
 
     await client.batch([
       {
@@ -172,6 +238,15 @@ export async function deleteBatteryAction(
       },
     ]);
 
+    await logActivity(
+      'BATTERY_DELETE',
+      'سڕینەوەی باتری لە سیستەم',
+      currentUserName || 'بەکارهێنەر',
+      currentUserId,
+      batName,
+      `باتری "${batName}" لەگەڵ تەواوی مێژووەکەی سڕایەوە`
+    );
+
     return { success: true };
   } catch (err: any) {
     console.error('Error deleting battery from Turso:', err);
@@ -180,27 +255,36 @@ export async function deleteBatteryAction(
 }
 
 /**
- * Record a charge in Turso and update the battery's lastChargeDate
+ * Record a charge in Turso and update the battery's lastChargeDate (with Changelog)
  */
 export async function recordChargeAction(
   record: ChargeRecord,
-  currentUserId?: string
+  currentUserId?: string,
+  currentUserName?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
     const ownerUserId = record.userId || currentUserId || null;
+    const ownerName = record.authorName || currentUserName || 'بەکارهێنەر';
+
+    const batRes = await client.execute({
+      sql: `SELECT name FROM batteries WHERE id = ? LIMIT 1`,
+      args: [record.batteryId],
+    });
+    const batName = batRes.rows[0]?.name ? String(batRes.rows[0].name) : record.batteryId;
 
     await client.batch([
       {
         sql: `INSERT OR REPLACE INTO charge_history (
-          id, batteryId, userId, chargeDate, chargeTime, daysSincePrevious, notes, percentage
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+          id, batteryId, userId, authorName, chargeDate, chargeTime, daysSincePrevious, notes, percentage
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         args: [
           record.id,
           record.batteryId,
           ownerUserId,
+          ownerName,
           record.chargeDate,
           record.chargeTime ?? null,
           record.daysSincePrevious ?? null,
@@ -214,10 +298,56 @@ export async function recordChargeAction(
       },
     ]);
 
+    await logActivity(
+      'BATTERY_CHARGE',
+      'ستۆرجکردن / بارگاویکردنەوەی باتری',
+      ownerName,
+      ownerUserId || undefined,
+      batName,
+      `ستۆرج کرا لە بەرواری ${record.chargeDate} - ${record.notes || ''}`
+    );
+
     return { success: true };
   } catch (err: any) {
     console.error('Error recording charge in Turso:', err);
     return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Get live activity changelog / audit logs
+ */
+export async function getActivityLogsAction(limit: number = 60): Promise<{
+  success: boolean;
+  logs?: ActivityLog[];
+  error?: string;
+}> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    const res = await client.execute({
+      sql: `SELECT id, timestamp, action, actionTitle, performedBy, performedById, targetName, details, meta_json
+            FROM audit_logs ORDER BY timestamp DESC LIMIT ?`,
+      args: [limit],
+    });
+
+    const logs: ActivityLog[] = res.rows.map((row: any) => ({
+      id: String(row.id),
+      timestamp: String(row.timestamp),
+      action: String(row.action) as ActivityLog['action'],
+      actionTitle: row.actionTitle ? String(row.actionTitle) : String(row.action),
+      performedBy: row.performedBy ? String(row.performedBy) : 'سیستەم',
+      performedById: row.performedById ? String(row.performedById) : undefined,
+      targetName: row.targetName ? String(row.targetName) : undefined,
+      details: row.details ? String(row.details) : undefined,
+      meta: row.meta_json ? JSON.parse(String(row.meta_json)) : undefined,
+    }));
+
+    return { success: true, logs };
+  } catch (e: any) {
+    console.error('Error fetching activity logs:', e);
+    return { success: false, error: e.message };
   }
 }
 
@@ -258,7 +388,7 @@ export async function deleteChargeRecordAction(
 }
 
 /**
- * Clear all batteries and history for current user (or whole system if admin)
+ * Clear all batteries (Admin only)
  */
 export async function clearAllBatteriesAction(
   reason?: string,
@@ -270,36 +400,22 @@ export async function clearAllBatteriesAction(
     await ensureTables();
     const client = getTursoClient();
 
-    if (isAdmin && !currentUserId) {
-      const countRes = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
-      const count = Number(countRes.rows[0]?.count || 0);
+    const countRes = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
+    const count = Number(countRes.rows[0]?.count || 0);
 
-      await client.batch([
-        {
-          sql: `INSERT INTO audit_logs (id, timestamp, action, details, meta_json) VALUES (?, ?, ?, ?, ?)`,
-          args: [
-            `del_${Date.now()}`,
-            new Date().toISOString(),
-            'CLEAR_ALL',
-            `Cleared ${count} batteries across whole system. Reason: ${reason || 'Admin initiated'}`,
-            JSON.stringify({ count, reason, clearedBy }),
-          ],
-        },
-        `DELETE FROM charge_history;`,
-        `DELETE FROM batteries;`,
-      ]);
-    } else if (currentUserId) {
-      await client.batch([
-        {
-          sql: `DELETE FROM charge_history WHERE userId = ?`,
-          args: [currentUserId],
-        },
-        {
-          sql: `DELETE FROM batteries WHERE userId = ?`,
-          args: [currentUserId],
-        },
-      ]);
-    }
+    await client.batch([
+      `DELETE FROM charge_history;`,
+      `DELETE FROM batteries;`,
+    ]);
+
+    await logActivity(
+      'SYSTEM_RESET',
+      'سڕینەوەی گشتیی باترییەکان',
+      clearedBy || 'بەڕێوەبەر',
+      currentUserId,
+      'تەواوی داتای باترییەکان',
+      `سڕینەوەی ${count} باتری. هۆکار: ${reason || 'سڕینەوەی دەستی'}`
+    );
 
     return { success: true };
   } catch (err: any) {
@@ -313,13 +429,15 @@ export async function clearAllBatteriesAction(
  */
 export async function importBatteriesAction(
   batteries: Battery[],
-  currentUserId?: string
+  currentUserId?: string,
+  currentUserName?: string
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
     const statements: any[] = [];
+    const ownerName = currentUserName || 'بەکارهێنەر';
 
     for (const b of batteries) {
       const cellsJson = b.cells ? JSON.stringify(b.cells) : null;
@@ -327,12 +445,13 @@ export async function importBatteriesAction(
 
       statements.push({
         sql: `INSERT OR REPLACE INTO batteries (
-          id, userId, name, category, lastChargeDate, reminderIntervalDays,
+          id, userId, authorName, name, category, lastChargeDate, reminderIntervalDays,
           voltage, storagePercentage, notes, cells_json, createdAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           b.id,
           ownerUserId,
+          b.authorName || ownerName,
           b.name,
           b.category,
           b.lastChargeDate,
@@ -349,12 +468,13 @@ export async function importBatteriesAction(
         for (const h of b.history) {
           statements.push({
             sql: `INSERT OR REPLACE INTO charge_history (
-              id, batteryId, userId, chargeDate, chargeTime, daysSincePrevious, notes, percentage
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              id, batteryId, userId, authorName, chargeDate, chargeTime, daysSincePrevious, notes, percentage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             args: [
               h.id,
               b.id,
               ownerUserId,
+              h.authorName || ownerName,
               h.chargeDate,
               h.chargeTime ?? null,
               h.daysSincePrevious ?? null,
@@ -371,6 +491,15 @@ export async function importBatteriesAction(
       const chunk = statements.slice(i, i + 100);
       await client.batch(chunk);
     }
+
+    await logActivity(
+      'BATTERY_ADD',
+      'هاوردەکردنی دەستەیی باترییەکان (Bulk Import)',
+      ownerName,
+      currentUserId,
+      `${batteries.length} باتری`,
+      `هاوردەکردنی سەرکەوتووی ${batteries.length} باتری لە پەڕگەوە`
+    );
 
     return { success: true, count: batteries.length };
   } catch (err: any) {
