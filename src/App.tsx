@@ -56,6 +56,7 @@ import { LoginPage } from './components/LoginPage';
 import { ChangelogView } from './components/ChangelogView';
 import { UsersManagementView } from './components/UsersManagementView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { CloudDatabaseModal } from './components/CloudDatabaseModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
 import {
   getBatteriesAction,
@@ -107,6 +108,7 @@ import {
   KeyIcon,
   MoonIcon,
   SunIcon,
+  CloudIcon,
 } from '@heroicons/react/24/outline';
 
 export default function App() {
@@ -158,6 +160,7 @@ export default function App() {
     return null;
   });
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [pendingUsersCount, setPendingUsersCount] = useState(0);
 
   // Workspace Data Mode: 'TEAM' (collaborative team view) vs 'PERSONAL' (my batteries only)
@@ -1868,6 +1871,34 @@ export default function App() {
         </div>
 
         <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
+          {/* بەستنەوە بە داتابەیسی کلاود (Cloud Database Connection) */}
+          <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-[#222730] bg-emerald-50/40 dark:bg-emerald-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 shadow-2xs hover:border-emerald-300 dark:hover:border-emerald-800 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-700/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shrink-0">
+                <CloudIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>بەستنەوە بە داتابەیسی کلاود (Turso Cloud Database)</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/60">
+                    کلاود
+                  </span>
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                  ڕێکخستنی ناونیشانی Turso و هێنانی داتاکانی کلاود بۆ ناو دیسکتۆپ
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsCloudModalOpen(true)}
+              className="w-full sm:w-auto min-h-[40px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer shrink-0"
+            >
+              <CloudIcon className="w-4 h-4 text-emerald-100" />
+              <span>ڕێکخستنی کلاود</span>
+            </button>
+          </div>
+
           {/* دوگمەکانی هاوردەکردن و هەناردەکردنی JSON */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
             <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-[#222730] bg-slate-50/50 dark:bg-[#191D24]/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 dark:hover:border-[#2B323D] transition-all">
@@ -2833,6 +2864,16 @@ export default function App() {
         onClose={() => setIsUpdateModalOpen(false)}
         updateData={updateCheckResult}
         onExportBackup={handleExportData}
+      />
+
+      <CloudDatabaseModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        onSyncSuccess={(synced) => {
+          setBatteries(synced);
+          saveBatteries(synced);
+        }}
+        showAlert={showAlert}
       />
 
       <CustomDialog

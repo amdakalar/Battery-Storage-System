@@ -303,6 +303,107 @@ function createWebLocalClient(): Client {
 }
 
 /**
+ * Reset active Turso client instance (used when cloud credentials change)
+ */
+export function resetTursoClient(): void {
+  tursoClient = null;
+}
+
+/**
+ * Save custom Turso credentials to localStorage and reset client
+ */
+export function saveCloudTursoConfig(url: string, token: string): void {
+  if (typeof localStorage !== 'undefined') {
+    if (url.trim()) {
+      localStorage.setItem('turso_cloud_database_url', url.trim());
+    } else {
+      localStorage.removeItem('turso_cloud_database_url');
+    }
+
+    if (token.trim()) {
+      localStorage.setItem('turso_cloud_auth_token', token.trim());
+    } else {
+      localStorage.removeItem('turso_cloud_auth_token');
+    }
+  }
+  resetTursoClient();
+}
+
+/**
+ * Get current active Turso configuration
+ */
+export function getCloudTursoConfig(): {
+  url: string;
+  authToken: string;
+  isConfigured: boolean;
+  isRemote: boolean;
+} {
+  let customUrl = '';
+  let customToken = '';
+  if (typeof localStorage !== 'undefined') {
+    try {
+      customUrl = localStorage.getItem('turso_cloud_database_url') || '';
+      customToken = localStorage.getItem('turso_cloud_auth_token') || '';
+    } catch (e) {}
+  }
+
+  const url = customUrl ||
+              (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
+              (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_DATABASE_URL) ||
+              (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_DATABASE_URL) ||
+              '';
+
+  const authToken = customToken ||
+                    (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
+                    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_AUTH_TOKEN) ||
+                    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
+                    '';
+
+  const isRemote = isRemoteLibsqlUrl(url);
+
+  return {
+    url,
+    authToken,
+    isConfigured: Boolean(url.trim()),
+    isRemote,
+  };
+}
+
+/**
+ * Test Turso connection directly and query battery count
+ */
+export async function testTursoConnection(
+  customUrl?: string,
+  customToken?: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    const config = getCloudTursoConfig();
+    const targetUrl = (customUrl !== undefined ? customUrl : config.url).trim();
+    const targetToken = (customToken !== undefined ? customToken : config.authToken).trim();
+
+    if (!targetUrl) {
+      return { success: false, error: 'تکایە ناونیشانی داتابەیسی کلاود (Database URL) بنووسە' };
+    }
+
+    if (!isRemoteLibsqlUrl(targetUrl)) {
+      return { success: false, error: 'ناونیشانی داتابەیس دەبێت بە libsql:// یان https:// دەستپێبکات (وەک: libsql://your-db.turso.io)' };
+    }
+
+    const testClient = createClient({
+      url: targetUrl,
+      authToken: targetToken || undefined,
+    });
+
+    const res = await testClient.execute('SELECT COUNT(*) as count FROM batteries');
+    const count = Number(res.rows[0]?.count || 0);
+
+    return { success: true, count };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'نەتوانرا پەیوەندی بە داتابەیسی کلاودەوە بکرێت' };
+  }
+}
+
+/**
  * Get or initialize the LibSQL / Turso Cloud SQLite Client.
  */
 export function getTursoClient(): Client {
@@ -313,12 +414,23 @@ export function getTursoClient(): Client {
     defaultLocal = 'file:/tmp/local.db';
   }
 
-  const url = (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
+  let customUrl = '';
+  let customToken = '';
+  if (typeof localStorage !== 'undefined') {
+    try {
+      customUrl = localStorage.getItem('turso_cloud_database_url') || '';
+      customToken = localStorage.getItem('turso_cloud_auth_token') || '';
+    } catch (e) {}
+  }
+
+  const url = customUrl ||
+              (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
               (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_DATABASE_URL) ||
               (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_DATABASE_URL) ||
               defaultLocal;
 
-  const authToken = (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
+  const authToken = customToken ||
+                    (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
                     (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_AUTH_TOKEN) ||
                     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
                     undefined;
