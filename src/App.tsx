@@ -92,6 +92,8 @@ import {
   TagIcon,
   GlobeAltIcon,
   KeyIcon,
+  MoonIcon,
+  SunIcon,
 } from '@heroicons/react/24/outline';
 
 export default function App() {
@@ -103,6 +105,29 @@ export default function App() {
   >('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Dark mode state — persisted in localStorage, defaults to system preference
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('storage_dark_mode');
+      if (saved !== null) return saved === 'true';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  // Apply dark mode class to <html> element
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('storage_dark_mode', String(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => setIsDarkMode((d) => !d);
 
   // Search & Filtering State
   const [searchQuery, setSearchQuery] = useState('');
@@ -1868,7 +1893,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dir-rtl flex">
+    <div
+      className="min-h-screen min-h-dvh dir-rtl flex overflow-x-hidden"
+      style={{ background: 'var(--bg-app)' }}
+    >
       
       {/* Sidebar - Desktop */}
       <div className="hidden lg:block">
@@ -1899,39 +1927,73 @@ export default function App() {
       }`}>
         
         {/* Mobile Header */}
-        <div className="lg:hidden bg-white/80 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-50 shadow-sm">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              
+        <div
+          className="lg:hidden sticky top-0 z-50 shadow-sm"
+          style={{
+            background: 'var(--header-bg)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: '1px solid var(--bg-border)',
+            paddingTop: 'env(safe-area-inset-top)',
+          }}
+        >
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
               {/* Logo and Title */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-500/25">
-                  <BoltIcon className="w-7 h-7" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shrink-0">
+                  <BoltIcon className="w-5 h-5" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight">
+                <div className="min-w-0">
+                  <h1 className="text-sm font-black tracking-tight leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
                     سیستەمی پیشەیی
                   </h1>
-                  <p className="text-sm font-bold text-emerald-700">
-                    بەڕێوەبردنی ستۆرج باتری
+                  <p className="text-[10px] font-bold text-emerald-600 leading-tight">
+                    {currentUser?.fullName || 'بەڕێوەبردنی ستۆرج'}
                   </p>
                 </div>
               </div>
 
-              {/* Mobile Menu Toggle */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
-              >
-                {mobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-              </button>
+              {/* Right Controls */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Dark Mode Toggle */}
+                <button
+                  onClick={toggleDarkMode}
+                  className="p-2 rounded-xl transition-colors cursor-pointer"
+                  style={{ background: 'var(--bg-surface2)', border: '1px solid var(--bg-border)' }}
+                  title={isDarkMode ? 'گۆڕین بۆ لایت مۆد' : 'گۆڕین بۆ دارک مۆد'}
+                >
+                  {isDarkMode
+                    ? <SunIcon className="w-5 h-5 text-amber-400" />
+                    : <MoonIcon className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+                  }
+                </button>
 
+                {/* Mobile Menu Toggle (opens sidebar overlay) */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="p-2 rounded-xl transition-colors cursor-pointer"
+                  style={{ background: 'var(--bg-surface2)', border: '1px solid var(--bg-border)' }}
+                >
+                  {mobileMenuOpen
+                    ? <XMarkIcon className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
+                    : <Bars3Icon className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
+                  }
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Desktop Header / Top Navigation Bar */}
-        <div className="hidden lg:block bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div
+          className="hidden lg:block sticky top-0 z-30"
+          style={{
+            background: 'var(--header-bg)',
+            backdropFilter: 'blur(16px)',
+            borderBottom: '1px solid var(--bg-border)',
+          }}
+        >
           {activeView === 'batteries' ? (
             /* Batteries View: Minimal Executive Header */
             <div className="px-7 py-3.5 space-y-3">
@@ -2169,16 +2231,30 @@ export default function App() {
                   </div>
                 </div>
                 
-                {/* View Specific Actions */}
-                {activeView === 'analytics' && (
+                {/* View Specific Actions + Dark Mode Toggle */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {activeView === 'analytics' && (
+                    <button
+                      onClick={() => setIsPrintModalOpen(true)}
+                      className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white font-semibold text-xs rounded-lg transition-all flex items-center gap-2"
+                    >
+                      <PrinterIcon className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>پیشاندانی ڕاپۆرت & چاپکردن / Excel</span>
+                    </button>
+                  )}
+                  {/* Dark Mode Toggle Button */}
                   <button
-                    onClick={() => setIsPrintModalOpen(true)}
-                    className="w-full sm:w-auto px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-2 shrink-0"
+                    onClick={toggleDarkMode}
+                    className="p-2 rounded-xl transition-colors cursor-pointer"
+                    style={{ background: 'var(--bg-surface2)', border: '1px solid var(--bg-border)' }}
+                    title={isDarkMode ? 'گۆڕین بۆ لایت مۆد' : 'گۆڕین بۆ دارک مۆد'}
                   >
-                    <PrinterIcon className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>پیشاندانی ڕاپۆرت & چاپکردن / Excel</span>
+                    {isDarkMode
+                      ? <SunIcon className="w-4 h-4 text-amber-400" />
+                      : <MoonIcon className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                    }
                   </button>
-                )}
+                </div>
               </div>
             </div>
           )}
@@ -2187,9 +2263,12 @@ export default function App() {
 
         {/* Mobile Sidebar Overlay */}
         {mobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)}></div>
-            <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-xl">
+          <div className="lg:hidden fixed inset-0 z-[60]">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
+            <div
+              className="absolute right-0 top-0 h-full w-72 shadow-2xl"
+              style={{ background: 'var(--bg-surface)' }}
+            >
               <Sidebar
                 activeView={activeView}
                 onViewChange={(view) => {
@@ -2268,18 +2347,19 @@ export default function App() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 px-6 py-8 pb-24 lg:pb-8">
+        <main className="flex-1 px-4 py-6 pb-24 lg:px-6 lg:py-8 lg:pb-8">
           {renderContent()}
         </main>
 
       </div>
 
-      {/* Bottom Navigation - Mobile & Desktop Quick Actions */}
+      {/* Bottom Navigation - Mobile Only */}
       <BottomNavBar
         activeView={activeView}
         onViewChange={(v: string) => setActiveView(v as any)}
         urgentCount={urgentBatteries.length}
         onOpenAddModal={() => setIsAddModalOpen(true)}
+        currentUser={currentUser}
       />
 
       {/* Modals */}
