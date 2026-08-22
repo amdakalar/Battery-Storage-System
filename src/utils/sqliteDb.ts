@@ -355,3 +355,20 @@ export async function syncAllToSQLite(batteries: Battery[]): Promise<void> {
     console.error('Error syncing to SQLite DB:', e);
   }
 }
+
+/**
+ * Completely wipe SQLite DB tables and binary store
+ */
+export async function clearSQLiteDatabase(): Promise<void> {
+  try {
+    const db = await getSQLiteDB();
+    db.run(`DELETE FROM charge_history`);
+    db.run(`DELETE FROM batteries`);
+    persistSQLiteDB(db);
+    try {
+      localStorage.removeItem(SQLITE_FILE_KEY);
+    } catch (e) {}
+  } catch (e) {
+    console.error('Error clearing SQLite DB:', e);
+  }
+}

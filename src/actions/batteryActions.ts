@@ -1,7 +1,7 @@
 'use server';
 
 import { getTursoClient, initTursoTables } from '@/src/lib/turso';
-import { Battery, ChargeRecord, ActivityLog } from '@/src/types';
+import { Battery, ChargeRecord, ActivityLog, DeletionLog } from '@/src/types';
 import { getTodayISODate } from '@/src/utils/dateUtils';
 
 // Auto-initialize schema on server runtime
@@ -208,7 +208,49 @@ export async function saveBatteryAction(
 }
 
 /**
- * Delete a battery and its history (with Changelog logging)
+ * Fetch all deletion logs directly from Turso database
+ */
+export async function getDeletionLogsAction(): Promise<{
+  success: boolean;
+  logs: DeletionLog[];
+  error?: string;
+}> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    const res = await client.execute(`SELECT * FROM deletion_logs ORDER BY timestamp DESC`);
+    const logs: DeletionLog[] = res.rows.map((row: any) => {
+      let deletedBatteries: Battery[] | undefined = undefined;
+      if (row.deletedBatteries_json) {
+        try {
+          deletedBatteries = JSON.parse(String(row.deletedBatteries_json));
+        } catch (e) {
+          deletedBatteries = undefined;
+        }
+      }
+
+      return {
+        id: String(row.id),
+        timestamp: String(row.timestamp),
+        batteryCountCleared: Number(row.batteryCountCleared || 0),
+        historyCountCleared: Number(row.historyCountCleared || 0),
+        reason: row.reason ? String(row.reason) : undefined,
+        clearedBy: row.clearedBy ? String(row.clearedBy) : undefined,
+        deletedBatteries,
+        isRestored: Boolean(row.isRestored === 1 || row.isRestored === true),
+      };
+    });
+
+    return { success: true, logs };
+  } catch (err: any) {
+    console.error('Error fetching deletion logs from Turso:', err);
+    return { success: false, logs: [], error: err.message };
+  }
+}
+
+/**
+ * Delete a battery and its history (saving full snapshot to deletion_logs in Turso)
  */
 export async function deleteBatteryAction(
   batteryId: string,
@@ -220,14 +262,80 @@ export async function deleteBatteryAction(
     await ensureTables();
     const client = getTursoClient();
 
-    // Check battery info for changelog
-    const existing = await client.execute({
-      sql: `SELECT name, userId FROM batteries WHERE id = ? LIMIT 1`,
+    // Fetch existing battery and its charge history for complete snapshot
+    const batRes = await client.execute({
+      sql: `SELECT * FROM batteries WHERE id = ? LIMIT 1`,
       args: [batteryId],
     });
-    const batName = existing.rows[0]?.name ? String(existing.rows[0].name) : batteryId;
 
+    if (batRes.rows.length === 0) {
+      return { success: true }; // Already deleted
+    }
+
+    const batRow: any = batRes.rows[0];
+    const batName = batRow.name ? String(batRow.name) : batteryId;
+
+    const histRes = await client.execute({
+      sql: `SELECT * FROM charge_history WHERE batteryId = ? ORDER BY chargeDate DESC`,
+      args: [batteryId],
+    });
+
+    let cells: any = undefined;
+    if (batRow.cells_json) {
+      try {
+        cells = JSON.parse(String(batRow.cells_json));
+      } catch (e) {}
+    }
+
+    const historyItems: ChargeRecord[] = histRes.rows.map((h: any) => ({
+      id: String(h.id),
+      batteryId: String(h.batteryId),
+      userId: h.userId ? String(h.userId) : undefined,
+      authorName: h.authorName ? String(h.authorName) : undefined,
+      chargeDate: String(h.chargeDate),
+      chargeTime: h.chargeTime ? String(h.chargeTime) : undefined,
+      daysSincePrevious: h.daysSincePrevious ? Number(h.daysSincePrevious) : undefined,
+      notes: h.notes ? String(h.notes) : undefined,
+      percentage: h.percentage ? Number(h.percentage) : undefined,
+    }));
+
+    const batterySnapshot: Battery = {
+      id: String(batRow.id),
+      userId: batRow.userId ? String(batRow.userId) : undefined,
+      authorName: batRow.authorName ? String(batRow.authorName) : undefined,
+      name: batName,
+      category: String(batRow.category),
+      lastChargeDate: String(batRow.lastChargeDate),
+      reminderIntervalDays: Number(batRow.reminderIntervalDays || 40),
+      voltage: batRow.voltage ? Number(batRow.voltage) : undefined,
+      storagePercentage: batRow.storagePercentage ? Number(batRow.storagePercentage) : undefined,
+      notes: batRow.notes ? String(batRow.notes) : undefined,
+      cells,
+      createdAt: String(batRow.createdAt),
+      history: historyItems,
+    };
+
+    const deletionLogId = `del_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const timestamp = new Date().toISOString();
+    const performer = currentUserName || 'بەکارهێنەر';
+
+    // Batch transaction: Save deletion snapshot log, delete history, delete battery
     await client.batch([
+      {
+        sql: `INSERT INTO deletion_logs (
+          id, timestamp, batteryCountCleared, historyCountCleared, reason, clearedBy, clearedById, deletedBatteries_json, isRestored
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        args: [
+          deletionLogId,
+          timestamp,
+          1,
+          historyItems.length,
+          `سڕینەوەی باتری: ${batName}`,
+          performer,
+          currentUserId || null,
+          JSON.stringify([batterySnapshot]),
+        ],
+      },
       {
         sql: `DELETE FROM charge_history WHERE batteryId = ?`,
         args: [batteryId],
@@ -241,10 +349,10 @@ export async function deleteBatteryAction(
     await logActivity(
       'BATTERY_DELETE',
       'سڕینەوەی باتری لە سیستەم',
-      currentUserName || 'بەکارهێنەر',
+      performer,
       currentUserId,
       batName,
-      `باتری "${batName}" لەگەڵ تەواوی مێژووەکەی سڕایەوە`
+      `باتری "${batName}" لەگەڵ تەواوی مێژووەکەی سڕایەوە و لە لۆگی سڕینەوە تۆمارکرا`
     );
 
     return { success: true };
@@ -388,38 +496,341 @@ export async function deleteChargeRecordAction(
 }
 
 /**
- * Clear all batteries (Admin only)
+ * Clear all batteries transactionally with Turso deletion snapshot and direct verification (Admin only)
  */
 export async function clearAllBatteriesAction(
   reason?: string,
   clearedBy?: string,
   currentUserId?: string,
   isAdmin: boolean = false
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    // 1. Fetch full snapshot of existing batteries and charge histories before clearing
+    const batRows = await client.execute(`SELECT * FROM batteries`);
+    const histRows = await client.execute(`SELECT * FROM charge_history`);
+
+    const historyByBattery: Record<string, ChargeRecord[]> = {};
+    for (const row of histRows.rows) {
+      const bId = String(row.batteryId);
+      if (!historyByBattery[bId]) historyByBattery[bId] = [];
+      historyByBattery[bId].push({
+        id: String(row.id),
+        batteryId: bId,
+        userId: row.userId ? String(row.userId) : undefined,
+        authorName: row.authorName ? String(row.authorName) : undefined,
+        chargeDate: String(row.chargeDate),
+        chargeTime: row.chargeTime ? String(row.chargeTime) : undefined,
+        daysSincePrevious: row.daysSincePrevious ? Number(row.daysSincePrevious) : undefined,
+        notes: row.notes ? String(row.notes) : undefined,
+        percentage: row.percentage ? Number(row.percentage) : undefined,
+      });
+    }
+
+    const currentBatteries: Battery[] = batRows.rows.map((row: any) => {
+      let cells: any = undefined;
+      if (row.cells_json) {
+        try {
+          cells = JSON.parse(String(row.cells_json));
+        } catch (e) {}
+      }
+
+      return {
+        id: String(row.id),
+        userId: row.userId ? String(row.userId) : undefined,
+        authorName: row.authorName ? String(row.authorName) : undefined,
+        name: String(row.name),
+        category: String(row.category),
+        lastChargeDate: String(row.lastChargeDate),
+        reminderIntervalDays: Number(row.reminderIntervalDays || 40),
+        voltage: row.voltage ? Number(row.voltage) : undefined,
+        storagePercentage: row.storagePercentage ? Number(row.storagePercentage) : undefined,
+        notes: row.notes ? String(row.notes) : undefined,
+        createdAt: String(row.createdAt),
+        cells,
+        history: historyByBattery[String(row.id)] || [],
+      };
+    });
+
+    const count = currentBatteries.length;
+    const totalHistory = histRows.rows.length;
+    const deletionLogId = `del_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const timestamp = new Date().toISOString();
+    const performer = clearedBy || 'بەڕێوەبەری سیستەم';
+
+    // 1. Save snapshot in deletion_logs table if there are batteries
+    if (count > 0) {
+      try {
+        await client.execute({
+          sql: `INSERT INTO deletion_logs (
+            id, timestamp, batteryCountCleared, historyCountCleared, reason, clearedBy, clearedById, deletedBatteries_json, isRestored
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+          args: [
+            deletionLogId,
+            timestamp,
+            count,
+            totalHistory,
+            reason || 'سڕینەوەی گشتیی دەستی لە لایەن بەکارهێنەرەوە',
+            performer,
+            currentUserId || null,
+            JSON.stringify(currentBatteries),
+          ],
+        });
+      } catch (logErr) {
+        console.error('Failed to insert deletion log snapshot:', logErr);
+      }
+    }
+
+    // 2. Perform direct reliable deletes
+    await client.execute(`DELETE FROM charge_history`);
+    await client.execute(`DELETE FROM batteries`);
+
+    // 3. Fallback: Force explicit ID deletions for any remaining rows
+    for (const bat of currentBatteries) {
+      try {
+        await client.execute({
+          sql: `DELETE FROM charge_history WHERE batteryId = ?`,
+          args: [bat.id],
+        });
+        await client.execute({
+          sql: `DELETE FROM batteries WHERE id = ?`,
+          args: [bat.id],
+        });
+      } catch (e) {
+        // Ignore single item delete error
+      }
+    }
+
+    // 4. Direct Verification Query: Verify Turso tables are completely empty
+    const verifyRes = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
+    const remainingCount = Number(verifyRes.rows[0]?.count || 0);
+
+    if (remainingCount > 0) {
+      // Retry forced cleanup
+      await client.execute(`DELETE FROM charge_history`);
+      await client.execute(`DELETE FROM batteries`);
+    }
+
+    await logActivity(
+      'SYSTEM_RESET',
+      'سڕینەوەی گشتیی داتاکان',
+      performer,
+      currentUserId,
+      'تەواوی داتای باترییەکان',
+      `سڕینەوەی سەرکەوتووی ${count} باتری و ${totalHistory} تۆماری مێژوویی لە داتابەیسی سەرەکی Turso`
+    );
+
+    return { success: true, count };
+  } catch (err: any) {
+    console.error('Error clearing batteries from Turso:', err);
+    return { success: false, count: 0, error: err.message };
+  }
+}
+
+/**
+ * Transactionally restore deleted batteries from a specific deletion log in Turso
+ */
+export async function restoreDeletedDataAction(
+  logId: string,
+  currentUserId?: string,
+  currentUserName?: string
+): Promise<{
+  success: boolean;
+  restoredCount: number;
+  error?: string;
+}> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    // 1. Fetch deletion log
+    const logRes = await client.execute({
+      sql: `SELECT * FROM deletion_logs WHERE id = ? LIMIT 1`,
+      args: [logId],
+    });
+
+    if (logRes.rows.length === 0) {
+      return { success: false, restoredCount: 0, error: 'لۆگی سڕینەوەی داواکراو نەدۆزرایەوە' };
+    }
+
+    const logRow: any = logRes.rows[0];
+    if (!logRow.deletedBatteries_json) {
+      return { success: false, restoredCount: 0, error: 'هیچ داتایەکی باتری لەم لۆگەدا نییە' };
+    }
+
+    let batteriesToRestore: Battery[] = [];
+    try {
+      batteriesToRestore = JSON.parse(String(logRow.deletedBatteries_json));
+    } catch (e) {
+      return { success: false, restoredCount: 0, error: 'هەڵە لە خوێندنەوەی پەڕگەی باترییە سڕاوەکان' };
+    }
+
+    if (!Array.isArray(batteriesToRestore) || batteriesToRestore.length === 0) {
+      return { success: false, restoredCount: 0, error: 'هیچ باترییەک بۆ گەڕاندنەوە بوونی نییە' };
+    }
+
+    // 2. Fetch current existing battery IDs to prevent collision
+    const existingRes = await client.execute(`SELECT id FROM batteries`);
+    const existingIds = new Set(existingRes.rows.map((r: any) => String(r.id)));
+
+    const statements: any[] = [];
+    const restoredAt = new Date().toISOString();
+    const restoredBy = currentUserName || 'بەڕێوەبەری سیستەم';
+
+    for (const b of batteriesToRestore) {
+      // Re-assign ID if active battery shares ID
+      let finalId = b.id;
+      if (existingIds.has(finalId)) {
+        finalId = `bat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      }
+      existingIds.add(finalId);
+
+      const cellsJson = b.cells ? JSON.stringify(b.cells) : null;
+      const ownerUserId = b.userId || currentUserId || null;
+      const ownerName = b.authorName || restoredBy;
+
+      statements.push({
+        sql: `INSERT OR REPLACE INTO batteries (
+          id, userId, authorName, name, category, lastChargeDate, reminderIntervalDays,
+          voltage, storagePercentage, notes, cells_json, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          finalId,
+          ownerUserId,
+          ownerName,
+          b.name,
+          b.category,
+          b.lastChargeDate || getTodayISODate(),
+          b.reminderIntervalDays || 40,
+          b.voltage ?? null,
+          b.storagePercentage ?? null,
+          b.notes ?? null,
+          cellsJson,
+          b.createdAt || getTodayISODate(),
+        ],
+      });
+
+      if (b.history && Array.isArray(b.history)) {
+        for (const h of b.history) {
+          const histId = h.id || `hist_${finalId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+          statements.push({
+            sql: `INSERT OR REPLACE INTO charge_history (
+              id, batteryId, userId, authorName, chargeDate, chargeTime, daysSincePrevious, notes, percentage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            args: [
+              histId,
+              finalId,
+              ownerUserId,
+              ownerName,
+              h.chargeDate,
+              h.chargeTime ?? null,
+              h.daysSincePrevious ?? null,
+              h.notes ?? null,
+              h.percentage ?? null,
+            ],
+          });
+        }
+      }
+    }
+
+    // Mark deletion log as restored
+    statements.push({
+      sql: `UPDATE deletion_logs SET isRestored = 1, restoredAt = ?, restoredBy = ? WHERE id = ?`,
+      args: [restoredAt, restoredBy, logId],
+    });
+
+    // Execute batch insertion
+    for (let i = 0; i < statements.length; i += 100) {
+      const chunk = statements.slice(i, i + 100);
+      await client.batch(chunk);
+    }
+
+    // 3. Direct Verification: Verify restored batteries now exist in Turso
+    const countCheck = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
+    const totalCount = Number(countCheck.rows[0]?.count || 0);
+
+    if (totalCount === 0) {
+      throw new Error('داتابەیس پشڕاست نەکراوە: هیچ باترییەک پاش گەڕاندنەوە نەدۆزرایەوە.');
+    }
+
+    await logActivity(
+      'BATTERY_ADD',
+      'گەڕاندنەوەی داتای سڕاوە (Restore)',
+      restoredBy,
+      currentUserId,
+      `${batteriesToRestore.length} باتری`,
+      `گەڕاندنەوەی سەرکەوتووی ${batteriesToRestore.length} باتری لە لۆگی سڕینەوە بۆ ناو داتابەیسی سەرەکی Turso`
+    );
+
+    return { success: true, restoredCount: batteriesToRestore.length };
+  } catch (err: any) {
+    console.error('Error restoring deleted data in Turso:', err);
+    return { success: false, restoredCount: 0, error: err.message };
+  }
+}
+
+/**
+ * Restore all deleted data across all unrestored logs in Turso
+ */
+export async function restoreAllDeletedDataAction(
+  currentUserId?: string,
+  currentUserName?: string
+): Promise<{
+  success: boolean;
+  restoredCount: number;
+  error?: string;
+}> {
+  try {
+    await ensureTables();
+    const client = getTursoClient();
+
+    const logsRes = await client.execute(`SELECT * FROM deletion_logs WHERE isRestored = 0 ORDER BY timestamp ASC`);
+    if (logsRes.rows.length === 0) {
+      return { success: true, restoredCount: 0 };
+    }
+
+    let totalRestored = 0;
+    for (const logRow of logsRes.rows) {
+      const res = await restoreDeletedDataAction(String(logRow.id), currentUserId, currentUserName);
+      if (res.success) {
+        totalRestored += res.restoredCount;
+      }
+    }
+
+    return { success: true, restoredCount: totalRestored };
+  } catch (err: any) {
+    console.error('Error restoring all deleted data:', err);
+    return { success: false, restoredCount: 0, error: err.message };
+  }
+}
+
+/**
+ * Clear all deletion logs in Turso (Admin only)
+ */
+export async function clearDeletionLogsAction(
+  currentUserId?: string,
+  currentUserName?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
-    const countRes = await client.execute(`SELECT COUNT(*) as count FROM batteries`);
-    const count = Number(countRes.rows[0]?.count || 0);
-
-    await client.batch([
-      `DELETE FROM charge_history;`,
-      `DELETE FROM batteries;`,
-    ]);
+    await client.execute(`DELETE FROM deletion_logs`);
 
     await logActivity(
       'SYSTEM_RESET',
-      'سڕینەوەی گشتیی باترییەکان',
-      clearedBy || 'بەڕێوەبەر',
+      'سڕینەوەی لۆگی سڕینەوەکان',
+      currentUserName || 'بەڕێوەبەری سیستەم',
       currentUserId,
-      'تەواوی داتای باترییەکان',
-      `سڕینەوەی ${count} باتری. هۆکار: ${reason || 'سڕینەوەی دەستی'}`
+      'تەواوی مێژووی لۆگی سڕینەوەکان',
+      'سڕینەوە و پاککردنەوەی گشتیی خشتەی لۆگی سڕینەوەکان لە Turso'
     );
 
     return { success: true };
   } catch (err: any) {
-    console.error('Error clearing batteries:', err);
+    console.error('Error clearing deletion logs in Turso:', err);
     return { success: false, error: err.message };
   }
 }

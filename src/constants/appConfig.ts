@@ -9,5 +9,5 @@ export const APP_CONFIG = {
   GITHUB_REPO: 'amdakalar/Battery-Storage-System',
   APP_NAME_EN: 'Battery Storage System',
   APP_NAME_KU: 'سیستەمی بەڕێوەبردنی ستۆرج',
-  CURRENT_VERSION: '1.0.6',
+  CURRENT_VERSION: '1.0.7',
 };

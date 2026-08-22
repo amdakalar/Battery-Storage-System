@@ -113,21 +113,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* ───── Header ───── */}
       <div
         className={`flex items-center shrink-0 transition-all duration-300
-          ${isCollapsed ? 'justify-center px-0 py-5' : 'justify-between px-4 py-5'}
+          ${isCollapsed ? 'flex-col gap-3 px-0 py-4' : 'justify-between px-4 py-5'}
         `}
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
-        {!isCollapsed && (
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
-                boxShadow: '0 2px 8px 0 rgba(5,150,105,0.3)',
-              }}
-            >
-              <BoltIcon className="w-5 h-5 text-white" />
-            </div>
+        <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div
+            className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center p-1 overflow-hidden"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 2px 8px 0 rgba(0,0,0,0.2)',
+            }}
+          >
+            <img
+              src="./drone_battery_app_icon.svg"
+              alt="App Icon"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {!isCollapsed && (
             <div className="min-w-0">
               <h1 className="text-[13px] font-bold text-slate-100 tracking-tight leading-tight truncate">
                 سیستەمی پیشەیی
@@ -136,8 +141,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 بەڕێوەبردنی ستۆرج
               </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <button
           onClick={onToggleCollapse}

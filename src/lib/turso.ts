@@ -15,16 +15,23 @@ export function getTursoClient(): Client {
 
   // On Vercel serverless functions, the root filesystem is read-only, so SQLite fallback must be in /tmp
   let defaultLocal = 'file:local.db';
-  if (process.env.VERCEL || process.env.TMPDIR || (process.platform === 'linux' && process.env.NODE_ENV === 'production')) {
+  if (typeof process !== 'undefined' && (process.env?.VERCEL || process.env?.TMPDIR || (process.platform === 'linux' && process.env?.NODE_ENV === 'production'))) {
     defaultLocal = 'file:/tmp/local.db';
   }
 
-  const url = process.env.TURSO_DATABASE_URL || defaultLocal;
-  const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+  const url = (typeof process !== 'undefined' && process.env?.TURSO_DATABASE_URL) ||
+              (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_DATABASE_URL) ||
+              (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_DATABASE_URL) ||
+              defaultLocal;
+
+  const authToken = (typeof process !== 'undefined' && process.env?.TURSO_AUTH_TOKEN) ||
+                    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_TURSO_AUTH_TOKEN) ||
+                    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
+                    undefined;
 
   tursoClient = createClient({
     url,
-    authToken,
+    authToken: authToken || undefined,
   });
 
   return tursoClient;
@@ -96,11 +103,26 @@ export async function initTursoTables(): Promise<void> {
       meta_json TEXT
     );`,
 
+    `CREATE TABLE IF NOT EXISTS deletion_logs (
+      id TEXT PRIMARY KEY,
+      timestamp TEXT NOT NULL,
+      batteryCountCleared INTEGER NOT NULL DEFAULT 0,
+      historyCountCleared INTEGER NOT NULL DEFAULT 0,
+      reason TEXT,
+      clearedBy TEXT,
+      clearedById TEXT,
+      deletedBatteries_json TEXT,
+      isRestored INTEGER NOT NULL DEFAULT 0,
+      restoredAt TEXT,
+      restoredBy TEXT
+    );`,
+
     `CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);`,
     `CREATE INDEX IF NOT EXISTS idx_batteries_userId ON batteries (userId);`,
     `CREATE INDEX IF NOT EXISTS idx_charge_history_batteryId ON charge_history (batteryId);`,
     `CREATE INDEX IF NOT EXISTS idx_batteries_createdAt ON batteries (createdAt DESC);`,
     `CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs (timestamp DESC);`,
+    `CREATE INDEX IF NOT EXISTS idx_deletion_logs_timestamp ON deletion_logs (timestamp DESC);`,
   ]);
 
   // Safe incremental migrations for existing tables

@@ -26,6 +26,7 @@ import {
   restoreDeletedData,
   restoreAllDeletedData,
 } from './utils/storage';
+import { clearSQLiteDatabase } from './utils/sqliteDb';
 import { DeletionLog } from './types';
 import { getTodayISODate, formatGregorianKurdish, calculateBatteryStats } from './utils/dateUtils';
 import { Header } from './components/Header';
@@ -56,7 +57,18 @@ import { ChangelogView } from './components/ChangelogView';
 import { UsersManagementView } from './components/UsersManagementView';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { getPendingUsersCountAction, verifySessionAction } from './actions/authActions';
-import { getBatteriesAction, saveBatteryAction, deleteBatteryAction, recordChargeAction, importBatteriesAction, clearAllBatteriesAction } from './actions/batteryActions';
+import {
+  getBatteriesAction,
+  saveBatteryAction,
+  deleteBatteryAction,
+  recordChargeAction,
+  importBatteriesAction,
+  clearAllBatteriesAction,
+  getDeletionLogsAction,
+  restoreDeletedDataAction,
+  restoreAllDeletedDataAction,
+  clearDeletionLogsAction,
+} from './actions/batteryActions';
 import {
   BoltIcon,
   InformationCircleIcon,
@@ -184,9 +196,10 @@ export default function App() {
   const [licenseState, setLicenseState] = useState<LicenseState>(getLicenseState());
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
 
-  // Deletion Logs & Reset State
-  const [deletionLogs, setDeletionLogs] = useState<DeletionLog[]>(loadDeletionLogs());
+  // Deletion Logs & Reset State (Authoritative source: Turso Cloud DB)
+  const [deletionLogs, setDeletionLogs] = useState<DeletionLog[]>([]);
   const [isClearDataModalOpen, setIsClearDataModalOpen] = useState(false);
+  const isMutatingRef = React.useRef<boolean>(false);
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -295,9 +308,15 @@ export default function App() {
 
   // Synchronize and refresh batteries silently in the background without UI interruption
   const syncBatteriesSilently = React.useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || isMutatingRef.current) return;
     try {
-      const cloudBatteries = await getBatteriesAction();
+      const [cloudBatteries, logsRes] = await Promise.all([
+        getBatteriesAction(),
+        getDeletionLogsAction(),
+      ]);
+
+      if (isMutatingRef.current) return;
+
       if (Array.isArray(cloudBatteries)) {
         setBatteries((prev) => {
           if (JSON.stringify(prev) !== JSON.stringify(cloudBatteries)) {
@@ -306,6 +325,10 @@ export default function App() {
           }
           return prev;
         });
+      }
+
+      if (logsRes && logsRes.success && Array.isArray(logsRes.logs)) {
+        setDeletionLogs(logsRes.logs);
       }
     } catch (e) {
       console.error('Silent sync error:', e);
@@ -323,16 +346,24 @@ export default function App() {
       setBatteries(cached);
     }
 
-    // 2. Fetch and sync cloud (Cloud is authoritative)
+    // 2. Fetch and sync cloud (Turso is authoritative)
     (async () => {
       try {
-        const cloudBatteries = await getBatteriesAction();
-        if (isMounted && Array.isArray(cloudBatteries)) {
-          setBatteries(cloudBatteries);
-          saveBatteries(cloudBatteries);
+        const [cloudBatteries, logsRes] = await Promise.all([
+          getBatteriesAction(),
+          getDeletionLogsAction(),
+        ]);
+        if (isMounted) {
+          if (Array.isArray(cloudBatteries)) {
+            setBatteries(cloudBatteries);
+            saveBatteries(cloudBatteries);
+          }
+          if (logsRes && logsRes.success && Array.isArray(logsRes.logs)) {
+            setDeletionLogs(logsRes.logs);
+          }
         }
       } catch (error) {
-        console.error('Error loading batteries from Turso:', error);
+        console.error('Error loading data from Turso:', error);
       }
     })();
 
@@ -457,46 +488,82 @@ export default function App() {
   };
 
   // Action: Confirm and Record Quick Storage Today
-  const handleConfirmQuickCharge = (batteryId: string) => {
+  const handleConfirmQuickCharge = async (batteryId: string) => {
     const todayToUse = simulatedReferenceDate || getTodayISODate();
-    const updated = recordBatteryCharge(batteryId, todayToUse, 'ستۆرجکرا لەم ڕێکەوتەدا');
-    setBatteries(updated);
-    playSoundEffect('success');
-    recordChargeAction(
-      {
-        id: 'hist_' + Date.now(),
-        batteryId,
-        userId: currentUser?.id,
-        authorName: currentUser?.fullName,
-        chargeDate: todayToUse,
-        notes: 'ستۆرجکرا لەم ڕێکەوتەدا',
-      },
-      currentUser?.id,
-      currentUser?.fullName
-    ).catch(() => {});
+    isMutatingRef.current = true;
+    try {
+      const res = await recordChargeAction(
+        {
+          id: 'hist_' + Date.now(),
+          batteryId,
+          userId: currentUser?.id,
+          authorName: currentUser?.fullName,
+          chargeDate: todayToUse,
+          notes: 'ستۆرجکرا لەم ڕێکەوتەدا',
+        },
+        currentUser?.id,
+        currentUser?.fullName
+      );
+
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'هەڵە لە تۆمارکردن',
+          message: res.error || 'نەتوانرا تۆماری ستۆرجکردن لە داتابەیس پاشەکەوت بکرێت',
+        });
+        return;
+      }
+
+      const updated = await getBatteriesAction();
+      setBatteries(updated);
+      saveBatteries(updated);
+      playSoundEffect('success');
+    } catch (err: any) {
+      console.error('Error recording charge:', err);
+    } finally {
+      isMutatingRef.current = false;
+    }
   };
 
   // Action: Custom Storage Date
-  const handleSaveCustomDate = (batteryId: string, customDate: string, notes: string) => {
-    const updated = recordBatteryCharge(batteryId, customDate, notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو');
-    setBatteries(updated);
-    playSoundEffect('success');
-    recordChargeAction(
-      {
-        id: 'hist_' + Date.now(),
-        batteryId,
-        userId: currentUser?.id,
-        authorName: currentUser?.fullName,
-        chargeDate: customDate,
-        notes: notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو',
-      },
-      currentUser?.id,
-      currentUser?.fullName
-    ).catch(() => {});
+  const handleSaveCustomDate = async (batteryId: string, customDate: string, notes: string) => {
+    isMutatingRef.current = true;
+    try {
+      const res = await recordChargeAction(
+        {
+          id: 'hist_' + Date.now(),
+          batteryId,
+          userId: currentUser?.id,
+          authorName: currentUser?.fullName,
+          chargeDate: customDate,
+          notes: notes || 'ستۆرجکردنی تۆمارکراو بە مێژووی دیاریکراو',
+        },
+        currentUser?.id,
+        currentUser?.fullName
+      );
+
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'هەڵە لە تۆمارکردن',
+          message: res.error || 'نەتوانرا تۆماری ستۆرج لە داتابەیس پاشەکەوت بکرێت',
+        });
+        return;
+      }
+
+      const updated = await getBatteriesAction();
+      setBatteries(updated);
+      saveBatteries(updated);
+      playSoundEffect('success');
+    } catch (err: any) {
+      console.error('Error recording custom charge:', err);
+    } finally {
+      isMutatingRef.current = false;
+    }
   };
 
   // Action: Add New Battery
-  const handleAddBattery = (data: {
+  const handleAddBattery = async (data: {
     name: string;
     category: string;
     lastChargeDate: string;
@@ -506,31 +573,56 @@ export default function App() {
     storagePercentage?: number;
     cells?: any;
   }) => {
-    const today = getTodayISODate();
-    const id = 'bat_' + Date.now();
-    const newBattery: Battery = {
-      ...data,
-      id,
-      userId: currentUser?.id,
-      authorName: currentUser?.fullName,
-      createdAt: today,
-      history: [
-        {
-          id: 'hist_init_' + Date.now(),
-          batteryId: id,
-          userId: currentUser?.id,
-          authorName: currentUser?.fullName,
-          chargeDate: data.lastChargeDate || today,
-          notes: 'دروستکردنی ڕیکۆرد و یەکەم ستۆرج',
-        },
-      ],
-    };
+    isMutatingRef.current = true;
+    try {
+      const today = getTodayISODate();
+      const id = 'bat_' + Date.now();
+      const newBattery: Battery = {
+        ...data,
+        id,
+        userId: currentUser?.id,
+        authorName: currentUser?.fullName,
+        createdAt: today,
+        history: [
+          {
+            id: 'hist_init_' + Date.now(),
+            batteryId: id,
+            userId: currentUser?.id,
+            authorName: currentUser?.fullName,
+            chargeDate: data.lastChargeDate || today,
+            notes: 'دروستکردنی ڕیکۆرد و یەکەم ستۆرج',
+          },
+        ],
+      };
 
-    const updated = [newBattery, ...batteries];
-    setBatteries(updated);
-    saveBatteries(updated);
-    playSoundEffect('success');
-    saveBatteryAction(newBattery, currentUser?.id, currentUser?.fullName).catch(() => {});
+      const res = await saveBatteryAction(newBattery, currentUser?.id, currentUser?.fullName);
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'هەڵە لە زیادکردنی باتری',
+          message: res.error || 'نەتوانرا باتری لە داتابەیس پاشەکەوت بکرێت',
+        });
+        return;
+      }
+
+      const updated = await getBatteriesAction();
+      setBatteries(updated);
+      saveBatteries(updated);
+      playSoundEffect('success');
+      showAlert({
+        type: 'success',
+        title: 'باتری تۆمارکرا',
+        message: `باتری «${data.name}» بە سەرکەوتوویی لە داتابەیسی سەرەکی تۆمارکرا.`,
+      });
+    } catch (err: any) {
+      showAlert({
+        type: 'error',
+        title: 'هەڵە لە زیادکردنی باتری',
+        message: err.message || 'هەڵەیەکی نەزانراو ڕوویدا',
+      });
+    } finally {
+      isMutatingRef.current = false;
+    }
   };
 
   // Custom In-App Alert Dialog Trigger
@@ -647,60 +739,135 @@ export default function App() {
   };
 
   // Action: Update Battery & Cells
-  const handleUpdateBattery = (batteryId: string, updatedFields: Partial<Battery>) => {
-    const updated = updateBattery(batteryId, updatedFields);
-    setBatteries(updated);
-    playSoundEffect('success');
-    const existing = updated.find((b) => b.id === batteryId);
-    if (existing) {
-      saveBatteryAction(existing, currentUser?.id, currentUser?.fullName).catch(() => {});
+  const handleUpdateBattery = async (batteryId: string, updatedFields: Partial<Battery>) => {
+    isMutatingRef.current = true;
+    try {
+      const existing = batteries.find((b) => b.id === batteryId);
+      if (!existing) return;
+      const merged: Battery = { ...existing, ...updatedFields };
+
+      const res = await saveBatteryAction(merged, currentUser?.id, currentUser?.fullName);
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'هەڵە لە دەستکاریکردن',
+          message: res.error || 'نەتوانرا گۆڕانکارییەکان لە داتابەیس پاشەکەوت بکرێن',
+        });
+        return;
+      }
+
+      const updated = await getBatteriesAction();
+      setBatteries(updated);
+      saveBatteries(updated);
+      playSoundEffect('success');
+    } catch (err: any) {
+      console.error('Error updating battery:', err);
+    } finally {
+      isMutatingRef.current = false;
     }
   };
 
-  // Action: Clear All System Data & Save Log
+  // Action: Clear All System Data & Save Log to Turso
   const handleClearAllData = async (reason: string) => {
-    const res = clearAllSystemData(reason);
-    setBatteries(res.batteries);
-    setDeletionLogs(res.logs);
-    playSoundEffect('alert');
-
-    // Also delete all batteries and charge history from Turso Cloud database!
+    isMutatingRef.current = true;
     try {
-      await clearAllBatteriesAction(
+      // 1. Immediately wipe local state, localStorage, and SQLite storage for instant UI feedback
+      setBatteries([]);
+      saveBatteries([]);
+      clearAllSystemData(reason);
+      clearSQLiteDatabase().catch(() => {});
+
+      // 2. Clear authoritative database in Turso and snapshot into deletion_logs
+      const res = await clearAllBatteriesAction(
         reason,
         currentUser?.fullName || 'بەڕێوەبەر',
         currentUser?.id,
         currentUser?.role === 'ADMIN'
       );
-      // Confirm clear
-      const synced = await getBatteriesAction();
-      if (Array.isArray(synced)) {
+
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'هەڵە لە سڕینەوەی گشتی',
+          message: res.error || 'نەتوانرا داتاکان لە داتابەیسی سەرەکی بسڕدرێنەوە',
+        });
+        // Re-sync authoritative state
+        const synced = await getBatteriesAction();
         setBatteries(synced);
         saveBatteries(synced);
+        return;
       }
-    } catch (err) {
-      console.error('Failed to clear batteries in cloud:', err);
+
+      // 3. Fetch verified state and live deletion logs from Turso
+      const [syncedBatteries, logsRes] = await Promise.all([
+        getBatteriesAction(),
+        getDeletionLogsAction(),
+      ]);
+
+      const finalBatteries = Array.isArray(syncedBatteries) ? syncedBatteries : [];
+      setBatteries(finalBatteries);
+      saveBatteries(finalBatteries);
+      if (logsRes.success && Array.isArray(logsRes.logs)) {
+        setDeletionLogs(logsRes.logs);
+      }
+
+      playSoundEffect('alert');
+      showAlert({
+        type: 'success',
+        title: 'سڕینەوەی گشتی تەواوبوو',
+        message: `سەرجەم ${res.count} باتری لەگەڵ تەواوی مێژووەکەی لە داتابەیسی سەرەکی سڕانەوە و لە تۆماری سڕینەوە بۆ گەڕاندنەوە هەڵگیرا.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to clear batteries in Turso:', err);
+      showAlert({
+        type: 'error',
+        title: 'هەڵە لە سڕینەوە',
+        message: err.message || 'هەڵەیەک ڕوویدا لە کاتی سڕینەوەدا',
+      });
+    } finally {
+      isMutatingRef.current = false;
     }
   };
 
-  // Action: Clear Deletion Logs
+  // Action: Clear Deletion Logs in Turso
   const handleClearDeletionLogs = () => {
     showConfirm({
       type: 'danger',
       title: 'پاککردنەوەی لۆگی سڕینەوەکان',
-      message: 'ئایا دڵنیایت لە سڕینەوەی تەواوی لۆگەکانی سڕینەوە؟',
-      subMessage: 'سەرجەم تۆمارەکانی پێشووی سڕینەوە بە یەکجاری پاک دەکرێنەوە.',
-      confirmText: 'سڕینەوە',
+      message: 'ئایا دڵنیایت لە سڕینەوەی تەواوی تۆمارەکانی سڕینەوە؟',
+      subMessage: 'سەرجەم تۆمارەکانی پێشووی سڕینەوە لە داتابەیسی سەرەکی بە یەکجاری پاک دەکرێنەوە.',
+      confirmText: 'سڕینەوەی لۆگەکان',
       cancelText: 'پاشگەزبوونەوە',
-      onConfirm: () => {
-        const updated = clearDeletionLogs();
-        setDeletionLogs(updated);
-        playSoundEffect('success');
+      onConfirm: async () => {
+        isMutatingRef.current = true;
+        try {
+          const res = await clearDeletionLogsAction(currentUser?.id, currentUser?.fullName);
+          if (!res.success) {
+            showAlert({
+              type: 'error',
+              title: 'هەڵە لە پاککردنەوە',
+              message: res.error || 'نەتوانرا لۆگەکان بسڕدرێنەوە',
+            });
+            return;
+          }
+
+          const logsRes = await getDeletionLogsAction();
+          setDeletionLogs(logsRes.success ? logsRes.logs : []);
+          playSoundEffect('success');
+        } catch (err: any) {
+          showAlert({
+            type: 'error',
+            title: 'هەڵە',
+            message: err.message || 'هەڵەیەک ڕوویدا',
+          });
+        } finally {
+          isMutatingRef.current = false;
+        }
       },
     });
   };
 
-  // Action: Delete Battery
+  // Action: Delete Battery in Turso
   const handleDeleteBattery = (batteryId: string) => {
     const bat = batteries.find((b) => b.id === batteryId);
     const batName = bat?.name ? `«${bat.name}»` : 'ئەم باترییە';
@@ -709,84 +876,149 @@ export default function App() {
       type: 'danger',
       title: 'سڕینەوەی باتری',
       message: `ئایا دڵنیایت لە سڕینەوەی ${batName}؟`,
-      subMessage: 'تەواوی داتای ئەم باترییە بە سێڵەکان و مێژووەکەیەوە دەسڕدرێتەوە.',
+      subMessage: 'تەواوی داتای ئەم باترییە دەسڕدرێتەوە و کۆپییەکی لە لۆگی سڕینەوە بۆ گەڕاندنەوە هەڵدەگیرێت.',
       confirmText: 'سڕینەوەی باتری',
       cancelText: 'پاشگەزبوونەوە',
-      onConfirm: () => {
-        const updated = deleteBattery(batteryId);
-        setBatteries(updated);
-        setDeletionLogs(loadDeletionLogs());
-        playSoundEffect('success');
-        deleteBatteryAction(batteryId, currentUser?.id, currentUser?.fullName, currentUser?.role === 'ADMIN').catch(() => {});
+      onConfirm: async () => {
+        isMutatingRef.current = true;
+        try {
+          const res = await deleteBatteryAction(
+            batteryId,
+            currentUser?.id,
+            currentUser?.fullName,
+            currentUser?.role === 'ADMIN'
+          );
+
+          if (!res.success) {
+            showAlert({
+              type: 'error',
+              title: 'هەڵە لە سڕینەوە',
+              message: res.error || 'نەتوانرا باتری لە داتابەیس بسڕدرێتەوە',
+            });
+            return;
+          }
+
+          const [updatedBatteries, logsRes] = await Promise.all([
+            getBatteriesAction(),
+            getDeletionLogsAction(),
+          ]);
+
+          setBatteries(updatedBatteries);
+          saveBatteries(updatedBatteries);
+          if (logsRes.success) {
+            setDeletionLogs(logsRes.logs);
+          }
+
+          playSoundEffect('success');
+          showAlert({
+            type: 'success',
+            title: 'باتری سڕایەوە',
+            message: `${batName} بە سەرکەوتوویی لە داتابەیس سڕایەوە و لە تۆماری سڕینەوەکان پاشەکەوت کرا.`,
+          });
+        } catch (err: any) {
+          showAlert({
+            type: 'error',
+            title: 'هەڵە لە سڕینەوە',
+            message: err.message || 'هەڵەیەک ڕوویدا لە کاتی سڕینەوەی باتریدا',
+          });
+        } finally {
+          isMutatingRef.current = false;
+        }
       },
     });
   };
 
-  // Action: Restore Single Deleted Data Log
+  // Action: Restore Single Deleted Data Log directly in Turso
   const handleRestoreDeletedData = async (logId: string) => {
-    const res = restoreDeletedData(logId);
-    if (res.restoredCount > 0) {
-      setBatteries(res.updatedBatteries);
-      setDeletionLogs(res.updatedLogs);
-      playSoundEffect('success');
-
-      try {
-        await importBatteriesAction(res.updatedBatteries, currentUser?.id, currentUser?.fullName);
-      } catch (e) {
-        console.error('Failed to sync restored batteries to cloud:', e);
+    isMutatingRef.current = true;
+    try {
+      const res = await restoreDeletedDataAction(logId, currentUser?.id, currentUser?.fullName);
+      if (!res.success) {
+        showAlert({
+          type: 'error',
+          title: 'کێشە لە گەڕاندنەوە',
+          message: res.error || 'نەتوانرا داتاکان لە داتابەیس بگەڕێنرێنەوە',
+        });
+        return;
       }
 
+      const [syncedBatteries, logsRes] = await Promise.all([
+        getBatteriesAction(),
+        getDeletionLogsAction(),
+      ]);
+
+      setBatteries(syncedBatteries);
+      saveBatteries(syncedBatteries);
+      if (logsRes.success) {
+        setDeletionLogs(logsRes.logs);
+      }
+
+      playSoundEffect('success');
       showAlert({
         type: 'success',
-        title: 'گەڕاندنەوەی داتاکان',
-        message: `کۆی ${res.restoredCount} باتری بە سەرکەوتوویی لەگەڵ مێژوو و سێڵەکانی گەڕێنرانەوە بۆ سیستەمەکە.`,
+        title: 'گەڕاندنەوەی سەرکەوتوو',
+        message: `کۆی ${res.restoredCount} باتری لەگەڵ تەواوی مێژوو و سێڵەکانیان بە سەرکەوتوویی لە داتابەیسی سەرەکی Turso گەڕێنرانەوە.`,
         confirmText: 'باشە',
       });
-    } else {
+    } catch (err: any) {
       showAlert({
-        type: 'warning',
-        title: 'ئاگاداری',
-        message: 'هیچ داتایەکی گەڕێنراو لەم لۆگەدا نەدۆزرایەوە یان پێشتر گەڕێندراوەتەوە.',
-        confirmText: 'باشە',
+        type: 'error',
+        title: 'هەڵە لە گەڕاندنەوە',
+        message: err.message || 'هەڵەیەک لە کاتی گەڕاندنەوە ڕوویدا',
       });
+    } finally {
+      isMutatingRef.current = false;
     }
   };
 
-  // Action: Restore All Deleted Data
+  // Action: Restore All Deleted Data across Turso
   const handleRestoreAllDeletedData = () => {
     showConfirm({
       type: 'info',
       title: 'گەڕاندنەوەی سەرجەم داتاکان',
       message: 'ئایا دڵنیایت لە گەڕاندنەوەی سەرجەم باترییە سڕاوەکان بۆ ناو سیستەمەکە؟',
-      subMessage: 'هەموو ئەو باترییانەی پێشتر لە لۆگەکاندا ماونەتەوە سەرلەنوێ دەگەڕێنرێنەوە.',
+      subMessage: 'هەموو ئەو باترییانەی پێشتر لە تۆماری سڕینەوەدا هەڵگیراون دەگەڕێنرێنەوە بۆ داتابەیسی سەرەکی.',
       confirmText: 'گەڕاندنەوەی هەموو',
       cancelText: 'پاشگەزبوونەوە',
       onConfirm: async () => {
-        const res = restoreAllDeletedData();
-        if (res.restoredCount > 0) {
-          setBatteries(res.updatedBatteries);
-          setDeletionLogs(res.updatedLogs);
-          playSoundEffect('success');
-
-          try {
-            await importBatteriesAction(res.updatedBatteries, currentUser?.id, currentUser?.fullName);
-          } catch (e) {
-            console.error('Failed to sync restored batteries to cloud:', e);
+        isMutatingRef.current = true;
+        try {
+          const res = await restoreAllDeletedDataAction(currentUser?.id, currentUser?.fullName);
+          if (!res.success) {
+            showAlert({
+              type: 'error',
+              title: 'کێشە لە گەڕاندنەوەی گشتی',
+              message: res.error || 'نەتوانرا داتاکان بگەڕێنرێنەوە',
+            });
+            return;
           }
 
+          const [syncedBatteries, logsRes] = await Promise.all([
+            getBatteriesAction(),
+            getDeletionLogsAction(),
+          ]);
+
+          setBatteries(syncedBatteries);
+          saveBatteries(syncedBatteries);
+          if (logsRes.success) {
+            setDeletionLogs(logsRes.logs);
+          }
+
+          playSoundEffect('success');
           showAlert({
             type: 'success',
             title: 'سەرجەم داتاکان گەڕێنرانەوە',
-            message: `کۆی ${res.restoredCount} باتریی سڕاوە بە سەرکەوتوویی گەڕێنرانەوە بۆ سیستەمەکە.`,
+            message: `کۆی ${res.restoredCount} باتریی سڕاوە بە سەرکەوتوویی گەڕێنرانەوە بۆ داتابەیسی سەرەکی Turso.`,
             confirmText: 'باشە',
           });
-        } else {
+        } catch (err: any) {
           showAlert({
-            type: 'info',
-            title: 'هیچ داتایەک نەدۆزرایەوە',
-            message: 'هیچ باترییەکی سڕاوە بۆ گەڕاندنەوە نەماوە.',
-            confirmText: 'باشە',
+            type: 'error',
+            title: 'هەڵە لە گەڕاندنەوە',
+            message: err.message || 'هەڵەیەک ڕوویدا لە کاتی گەڕاندنەوەی داتاکاندا',
           });
+        } finally {
+          isMutatingRef.current = false;
         }
       },
     });
@@ -1536,42 +1768,42 @@ export default function App() {
   };
 
   const renderSettingsContent = () => (
-    <div className="space-y-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl max-w-4xl pb-10">
+    <div className="space-y-4 sm:space-y-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 dir-rtl max-w-4xl mx-auto pb-14 px-1 sm:px-0">
 
       {/* ═══════════════════════════════════════════════════════════════════════
           گرووپی ١: ڕێکخستنە گشتییەکان و سیستەم (General Preferences & System)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-[#15181E] rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-[#222730] shadow-2xs overflow-hidden transition-colors">
         {/* Section Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-slate-700/50">
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-[#191D24] dark:via-[#15181E] dark:to-[#191D24] text-white flex items-center justify-between border-b border-slate-700/50 dark:border-[#222730]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-white/10 dark:bg-emerald-500/10 border border-white/15 dark:border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
               <Cog6ToothIcon className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xs font-black text-white tracking-wide leading-tight">ڕێکخستنە گشتییەکان (General Preferences)</h3>
-              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">هەڵبژاردنی تایبەتمەندییە سەرەکییەکان، دەنگ و بەشەکان</p>
+              <h3 className="text-xs sm:text-sm font-black text-white tracking-wide leading-tight">ڕێکخستنە گشتییەکان (General Preferences)</h3>
+              <p className="text-[10.5px] sm:text-[11px] text-slate-300 dark:text-slate-400 mt-0.5 font-medium">هەڵبژاردنی تایبەتمەندییە سەرەکییەکان، دەنگ و بەشەکان</p>
             </div>
           </div>
         </div>
 
         {/* Section Items */}
-        <div className="divide-y divide-slate-100 p-1">
+        <div className="divide-y divide-slate-100 dark:divide-[#222730] p-1">
           {/* ١.١ دەنگی ئاگادارکردنەوە */}
-          <div className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/40 transition-colors rounded-xl">
+          <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-[#191D24]/50 transition-colors rounded-xl">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+              <div className="w-8 h-8 bg-slate-100 dark:bg-[#191D24] border border-slate-200/60 dark:border-[#262B35] rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
                 <SpeakerWaveIcon className="w-4 h-4" />
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-800">دەنگی ئاگادارکردنەوە (Audio Alerts)</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">لێدانی دەنگ لە کاتی ئەنجامدانی چارجی ستۆرج یان کردارەکان</p>
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">دەنگی ئاگادارکردنەوە (Audio Alerts)</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate">لێدانی دەنگ لە کاتی ئەنجامدانی چارجی ستۆرج یان کردارەکان</p>
               </div>
             </div>
             <button
               onClick={handleToggleAudio}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                settings.enableAudioAlerts ? 'bg-slate-900' : 'bg-slate-200'
+              className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 cursor-pointer ${
+                settings.enableAudioAlerts ? 'bg-emerald-600 dark:bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
               }`}
               title={settings.enableAudioAlerts ? 'ناچالاککردنی دەنگ' : 'چالاککردنی دەنگ'}
             >
@@ -1582,26 +1814,26 @@ export default function App() {
           </div>
 
           {/* ١.٢ بەڕێوەبردنی پۆل و جۆری درۆنەکان */}
-          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/40 transition-colors rounded-xl">
+          <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-[#191D24]/50 transition-colors rounded-xl">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+              <div className="w-8 h-8 bg-slate-100 dark:bg-[#191D24] border border-slate-200/60 dark:border-[#262B35] rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
                 <TagIcon className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-slate-800">بەڕێوەبردنی پۆل و مۆدێلەکان (Categories)</h4>
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded border border-slate-200">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">بەڕێوەبردنی پۆل و مۆدێلەکان (Categories)</h4>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-slate-100 dark:bg-[#191D24] text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-[#262B35]">
                     {categories.length} پۆل
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">زیادکردن، سڕینەوە و ڕێکخستنی جۆرەکانی درۆن و باتری</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium truncate">زیادکردن، سڕینەوە و ڕێکخستنی جۆرەکانی درۆن و باتری</p>
               </div>
             </div>
             <button
               onClick={() => setIsCategoryModalOpen(true)}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs rounded-lg transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0"
+              className="w-full sm:w-auto min-h-[40px] px-4 py-2 bg-white dark:bg-[#191D24] hover:bg-slate-50 dark:hover:bg-[#222730] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#262B35] font-bold text-xs rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer active:scale-[0.98]"
             >
-              <AdjustmentsHorizontalIcon className="w-3.5 h-3.5 text-slate-500" />
+              <AdjustmentsHorizontalIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <span>بەڕێوەبردنی پۆلەکان</span>
             </button>
           </div>
@@ -1612,59 +1844,59 @@ export default function App() {
       {/* ═══════════════════════════════════════════════════════════════════════
           گرووپی ٢: بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data Management & Storage)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-[#15181E] rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-[#222730] shadow-2xs overflow-hidden transition-colors">
         {/* Section Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between border-b border-slate-700/50">
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-[#191D24] dark:via-[#15181E] dark:to-[#191D24] text-white flex items-center justify-between border-b border-slate-700/50 dark:border-[#222730]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-white/10 dark:bg-emerald-500/10 border border-white/15 dark:border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-2xs shrink-0">
               <ArrowDownTrayIcon className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xs font-black text-white tracking-wide leading-tight">بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data & Backup)</h3>
-              <p className="text-[11px] text-slate-300 mt-0.5 font-medium">دەرهێنان، هاوردەکردن و گەڕاندنەوەی مێژووی باترییەکان</p>
+              <h3 className="text-xs sm:text-sm font-black text-white tracking-wide leading-tight">بەڕێوەبردن و پشتیوانیکردنی داتاکان (Data & Backup)</h3>
+              <p className="text-[10.5px] sm:text-[11px] text-slate-300 dark:text-slate-400 mt-0.5 font-medium">دەرهێنان، هاوردەکردن و گەڕاندنەوەی داتاکان لە داتابەیسی سەرەکی</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
           {/* دوگمەکانی هاوردەکردن و هەناردەکردنی JSON */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 transition-all">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+            <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-[#222730] bg-slate-50/50 dark:bg-[#191D24]/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 dark:hover:border-[#2B323D] transition-all">
               <div>
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <ArrowDownTrayIcon className="w-3.5 h-3.5" />
                   </div>
                   <span>دەرهێنانی کۆپیی یەدەگ (Export JSON)</span>
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-1.5 font-medium leading-relaxed">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-medium leading-relaxed">
                   پاشەکەوتکردنی تەواوی باترییەکان، مێژوو و زانیارییەکان لە پەڕگەیەکی JSON
                 </p>
               </div>
               <button
                 onClick={handleExportData}
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
               >
                 <ArrowDownTrayIcon className="w-4 h-4 text-emerald-100" />
                 <span>دەرهێنانی داتا (Export)</span>
               </button>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 transition-all">
+            <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-[#222730] bg-slate-50/50 dark:bg-[#191D24]/50 flex flex-col justify-between gap-3.5 shadow-2xs hover:border-slate-300 dark:hover:border-[#2B323D] transition-all">
               <div>
-                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-slate-200 text-slate-800 flex items-center justify-center shrink-0">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center shrink-0">
                     <ArrowUpTrayIcon className="w-3.5 h-3.5" />
                   </div>
                   <span>هێنانی کۆپیی یەدەگ (Import JSON)</span>
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-1.5 font-medium leading-relaxed">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-medium leading-relaxed">
                   گەڕاندنەوە و هاوردەکردنی داتاکان لە پەڕگەیەکی پێشتری JSON
                 </p>
               </div>
               <button
                 onClick={handleImportData}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                className="w-full min-h-[44px] py-2.5 px-4 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer border border-slate-700/50"
               >
                 <ArrowUpTrayIcon className="w-4 h-4 text-slate-200" />
                 <span>هێنانی داتا (Import)</span>
@@ -1672,27 +1904,27 @@ export default function App() {
             </div>
           </div>
 
-          {/* لۆگ و گەڕاندنەوەی داتاکان */}
-          <div className="rounded-xl border border-slate-200/90 overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-200/80">
+          {/* لۆگ و گەڕاندنەوەی داتاکان لە داتابەیسی سەرەکی */}
+          <div className="rounded-2xl border border-slate-200/90 dark:border-[#222730] overflow-hidden bg-white dark:bg-[#15181E]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3 bg-slate-50/80 dark:bg-[#191D24] border-b border-slate-200/80 dark:border-[#222730]">
               <div className="flex items-center gap-2.5">
-                <ClockIcon className="w-4 h-4 text-slate-600" />
+                <ClockIcon className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-slate-900 leading-tight">تۆماری سڕینەوە و گەڕاندنەوە (Deletion Logs)</h4>
-                  <span className="text-[10px] font-mono font-bold text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded-md">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">تۆماری سڕینەوە و گەڕاندنەوە (Deletion Logs)</h4>
+                  <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-slate-200/80 dark:bg-[#222730] px-2 py-0.5 rounded-md">
                     {deletionLogs.length}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto justify-end pt-1 sm:pt-0">
                 {deletionLogs.some((l) => l.deletedBatteries && l.deletedBatteries.length > 0 && !l.isRestored) && (
                   <button
                     onClick={handleRestoreAllDeletedData}
-                    className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs"
+                    className="w-full sm:w-auto min-h-[36px] text-xs bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.98]"
                     title="گەڕاندنەوەی سەرجەم باترییە سڕاوەکان"
                   >
-                    <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
+                    <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400 dark:text-white" />
                     <span>گەڕاندنەوەی هەموو</span>
                   </button>
                 )}
@@ -1700,7 +1932,7 @@ export default function App() {
                 {deletionLogs.length > 0 && (
                   <button
                     onClick={handleClearDeletionLogs}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                    className="w-full sm:w-auto min-h-[36px] text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/30 px-3 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
                     title="سڕینەوەی مێژووی لۆگەکان"
                   >
                     <TrashIcon className="w-3.5 h-3.5" />
@@ -1712,37 +1944,37 @@ export default function App() {
 
             {/* List */}
             {deletionLogs.length === 0 ? (
-              <div className="px-4 py-6 text-center">
-                <p className="text-xs text-slate-400 font-medium">هیچ داتایەکی سڕاوە یان لۆگێک تۆمار نەکراوە</p>
+              <div className="px-4 py-8 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">هیچ داتایەکی سڕاوە یان لۆگێک تۆمار نەکراوە</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+              <div className="divide-y divide-slate-100 dark:divide-[#222730] max-h-80 overflow-y-auto">
                 {deletionLogs.map((log) => {
                   const hasDeletedBatteries = log.deletedBatteries && log.deletedBatteries.length > 0;
                   return (
-                    <div key={log.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50/60 transition-colors">
-                      <div className="space-y-1 min-w-0">
+                    <div key={log.id} className="px-3.5 sm:px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-slate-50/60 dark:hover:bg-[#191D24]/60 transition-colors">
+                      <div className="space-y-1.5 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                          <span className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-[#191D24] px-2 py-0.5 rounded-md text-[11px] border border-slate-200/70 dark:border-[#262B35]">
                             سڕینەوەی {log.batteryCountCleared} باتری
                           </span>
-                          <span className="text-slate-400 font-medium text-[11px]">
+                          <span className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">
                             لەگەڵ {log.historyCountCleared} تۆماری مێژوویی
                           </span>
                           {log.isRestored && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                              <CheckCircleIcon className="w-3 h-3 text-emerald-600" />
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                              <CheckCircleIcon className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                               گەڕێندراوەتەوە
                             </span>
                           )}
                         </div>
-                        <p className="text-slate-500 font-medium text-[11px] truncate">
-                          هۆکار: <span className="font-semibold text-slate-700">{log.reason || 'سڕینەوەی دەستی'}</span>
+                        <p className="text-slate-600 dark:text-slate-300 font-medium text-[11px] truncate">
+                          هۆکار: <span className="font-semibold text-slate-800 dark:text-slate-200">{log.reason || 'سڕینەوەی دەستی'}</span>
                         </p>
                         {hasDeletedBatteries && (
-                          <p className="text-[10.5px] text-slate-400 font-medium truncate">
+                          <p className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate">
                             باترییەکان:{' '}
-                            <span className="text-slate-600 font-semibold">
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">
                               {log.deletedBatteries!.map((b) => b.name).slice(0, 4).join('، ')}
                               {log.deletedBatteries!.length > 4 ? ` و ${log.deletedBatteries!.length - 4} دانەی تر` : ''}
                             </span>
@@ -1750,10 +1982,10 @@ export default function App() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <div className="text-left font-mono font-bold text-slate-600 text-[11px]">
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1.5 w-full sm:w-auto pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-[#222730]/60 shrink-0">
+                        <div className="text-right sm:text-left font-mono font-bold text-slate-700 dark:text-slate-300 text-[11px]">
                           <div>{log.timestamp.split('T')[0]}</div>
-                          <div className="text-[10px] text-slate-400 font-normal">
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
                             {formatGregorianKurdish(log.timestamp.split('T')[0])} • {new Date(log.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
@@ -1761,10 +1993,10 @@ export default function App() {
                         {hasDeletedBatteries && !log.isRestored && (
                           <button
                             onClick={() => handleRestoreDeletedData(log.id)}
-                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-2xs shrink-0"
-                            title="گەڕاندنەوەی ئەم باترییانە"
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 cursor-pointer min-h-[34px]"
+                            title="گەڕاندنەوەی ئەم باترییانە بۆ داتابەیسی سەرەکی"
                           >
-                            <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-400" />
+                            <ArrowUturnRightIcon className="w-3.5 h-3.5 text-emerald-100" />
                             <span>گەڕاندنەوە</span>
                           </button>
                         )}
@@ -1781,37 +2013,37 @@ export default function App() {
       {/* ═══════════════════════════════════════════════════════════════════════
           گرووپی ٣: ناوچەی مەترسیدار و سڕینەوە (Danger Zone)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-2xl border border-rose-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-[#15181E] rounded-2xl sm:rounded-3xl border border-rose-200/90 dark:border-rose-900/40 shadow-2xs overflow-hidden transition-colors">
         {/* Section Header */}
-        <div className="px-5 py-3.5 bg-rose-50/80 border-b border-rose-200/80 flex items-center justify-between">
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-rose-50/80 dark:bg-rose-950/30 border-b border-rose-200/80 dark:border-rose-900/40 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0">
-              <ExclamationTriangleIcon className="w-4 h-4 text-rose-600" />
+            <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/40 border border-rose-200 dark:border-rose-800/40 flex items-center justify-center text-rose-700 dark:text-rose-400 shrink-0">
+              <ExclamationTriangleIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <h3 className="text-xs font-black text-rose-900 leading-tight">ناوچەی مەترسیدار (Danger Zone)</h3>
-              <p className="text-[10.5px] text-rose-600 font-medium">کردارە هەستیار و سڕینەوە سەرەکییەکان</p>
+              <h3 className="text-xs font-black text-rose-900 dark:text-rose-300 leading-tight">ناوچەی مەترسیدار (Danger Zone)</h3>
+              <p className="text-[10.5px] text-rose-600 dark:text-rose-400 font-medium">کردارە هەستیار و سڕینەوە سەرەکییەکان</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200/70 flex items-center justify-center shrink-0">
-              <TrashIcon className="w-4 h-4 text-rose-600" />
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-800/40 flex items-center justify-center shrink-0">
+              <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-900 leading-tight">سڕینەوەی سەرجەم داتاکانی سیستەم (Clear All Data)</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5 font-medium leading-relaxed">
-                سڕینەوەی سەرجەم باترییەکان، مێژوو و داتاکانی ستۆرج بە شێوەیەکی یەکجاری
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">سڕینەوەی سەرجەم داتاکانی سیستەم (Clear All Data)</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium leading-relaxed">
+                سڕینەوەی سەرجەم باترییەکان و مێژوو لە داتابەیسی سەرەکی لەگەڵ هەڵگرتنی کۆپیی گەڕاندنەوە
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsClearDataModalOpen(true)}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+            className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs rounded-xl transition-all shrink-0 flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-[0.98]"
           >
-            <TrashIcon className="w-3.5 h-3.5" />
+            <TrashIcon className="w-4 h-4" />
             <span>سڕینەوەی داتاکان</span>
           </button>
         </div>
@@ -2077,8 +2309,12 @@ export default function App() {
               {/* Logo and Title */}
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative shrink-0">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md">
-                    <BoltIcon className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center p-1 shadow-md overflow-hidden bg-white/10 dark:bg-[#191D24] border border-white/15 dark:border-[#2B323D]">
+                    <img
+                      src="./drone_battery_app_icon.svg"
+                      alt="App Icon"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   {overdueCount > 0 && (
                     <span className="absolute -top-1 -right-1.5 bg-rose-500 text-white font-mono text-[9px] font-black min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 animate-pulse shadow-xs">
@@ -2090,7 +2326,7 @@ export default function App() {
                   <h1 className="text-sm font-black tracking-tight leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
                     سیستەمی پیشەیی
                   </h1>
-                  <p className="text-[10px] font-bold text-emerald-600 leading-tight">
+                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 leading-tight">
                     {currentUser?.fullName || 'بەڕێوەبردنی ستۆرج'}
                   </p>
                 </div>

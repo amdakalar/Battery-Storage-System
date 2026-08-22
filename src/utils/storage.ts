@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 import { generate50SampleBatteries } from './sampleData';
 
-import { syncAllToSQLite, loadSQLiteBatteries } from './sqliteDb';
+import { syncAllToSQLite, loadSQLiteBatteries, clearSQLiteDatabase } from './sqliteDb';
 
 /**
  * Load all batteries synchronously from local storage.
@@ -37,21 +37,16 @@ export function loadBatteries(): Battery[] {
 }
 
 /**
- * Asynchronously loads saved batteries with fallback to SQLite database file.
+ * Asynchronously loads saved batteries.
  */
 export async function loadBatteriesAsync(): Promise<Battery[]> {
   try {
     const raw = localStorage.getItem(BATTERIES_STORAGE_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
-    }
-    const sqBatteries = await loadSQLiteBatteries();
-    if (sqBatteries && sqBatteries.length > 0) {
-      localStorage.setItem(BATTERIES_STORAGE_KEY, JSON.stringify(sqBatteries));
-      return sqBatteries;
     }
     return loadBatteries();
   } catch (error) {
@@ -339,6 +334,7 @@ export function clearAllSystemData(
   });
 
   saveBatteries([]);
+  clearSQLiteDatabase().catch(() => {});
 
   return { batteries: [], logs: newLogs };
 }

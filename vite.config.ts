@@ -1,15 +1,23 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+
   return {
     // Must be './' so all asset paths are relative in the built index.html.
     // This is required for Electron's file:// protocol to resolve assets correctly.
     base: './',
 
     plugins: [react(), tailwindcss()],
+
+    define: {
+      'process.env.TURSO_DATABASE_URL': JSON.stringify(process.env.TURSO_DATABASE_URL || env.TURSO_DATABASE_URL || env.NEXT_PUBLIC_TURSO_DATABASE_URL || ''),
+      'process.env.TURSO_AUTH_TOKEN': JSON.stringify(process.env.TURSO_AUTH_TOKEN || env.TURSO_AUTH_TOKEN || env.NEXT_PUBLIC_TURSO_AUTH_TOKEN || ''),
+      'process.env.NEXT_PUBLIC_APP_NAME': JSON.stringify(process.env.NEXT_PUBLIC_APP_NAME || env.NEXT_PUBLIC_APP_NAME || 'Battery Storage System'),
+    },
 
     resolve: {
       alias: {

@@ -17,18 +17,18 @@
 }
 
 .dark {
-  --bg-app: #0b1120;
-  --bg-surface: #0f172a;
-  --bg-surface2: #1e293b;
-  --bg-border: #1e293b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --sidebar-bg: linear-gradient(180deg, #070d1a 0%, #050c18 100%);
-  --header-bg: rgba(15,23,42,0.92);
-  --card-bg: #0f172a;
-  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 16px -2px rgba(0,0,0,0.5);
+  --bg-app: #0F1115;
+  --bg-surface: #15181E;
+  --bg-surface2: #191D24;
+  --bg-border: #222730;
+  --text-primary: #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --sidebar-bg: linear-gradient(180deg, #15181E 0%, #0F1115 100%);
+  --header-bg: rgba(21, 24, 30, 0.94);
+  --card-bg: #191D24;
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.6);
+  --shadow-md: 0 4px 16px -2px rgba(0,0,0,0.7);
 }
 
 /* ─── Base Reset ─── */
@@ -72,7 +72,8 @@ body {
 
 /* Dark mode adaptive backgrounds */
 .dark body {
-  background-color: #0b1120;
+  background-color: #0F1115;
+  color: #F3F4F6;
 }
 
 /* ─── Lining numerals ─── */
@@ -108,8 +109,8 @@ body, input, textarea, select, button, div, span, p, h1, h2, h3, h4, h5, h6 {
 }
 
 .dark .glass {
-  background: rgba(15, 23, 42, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(21, 24, 30, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* ─── Card hover ─── */
@@ -131,8 +132,8 @@ body, input, textarea, select, button, div, span, p, h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-.dark ::-webkit-scrollbar-thumb { background: #334155; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+.dark ::-webkit-scrollbar-thumb { background: #262B35; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #323946; }
 
 /* Hide scrollbar on mobile (touch scrolling) */
 @media (max-width: 1024px) {
@@ -173,20 +174,24 @@ button, [role="button"] {
   }
 }
 
-/* ─── Dark mode for Tailwind classes ─── */
-.dark .bg-white        { background-color: #0f172a !important; }
-.dark .bg-slate-50     { background-color: #0f172a !important; }
-.dark .bg-slate-100    { background-color: #1e293b !important; }
-.dark .bg-slate-200    { background-color: #1e293b !important; }
-.dark .border-slate-200{ border-color: #1e293b !important; }
-.dark .border-slate-300{ border-color: #334155 !important; }
-.dark .text-slate-900  { color: #f1f5f9 !important; }
-.dark .text-slate-800  { color: #e2e8f0 !important; }
-.dark .text-slate-700  { color: #cbd5e1 !important; }
-.dark .text-slate-600  { color: #94a3b8 !important; }
-.dark .text-slate-500  { color: #64748b !important; }
-.dark .text-slate-400  { color: #475569 !important; }
-.dark .shadow-xs       { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+/* ─── Dark mode for Tailwind classes (Enterprise Palette) ─── */
+.dark .bg-white        { background-color: #15181E !important; }
+.dark .bg-slate-50     { background-color: #191D24 !important; }
+.dark .bg-slate-100    { background-color: #191D24 !important; }
+.dark .bg-slate-200    { background-color: #222730 !important; }
+.dark .border-slate-100{ border-color: #222730 !important; }
+.dark .border-slate-200{ border-color: #222730 !important; }
+.dark .border-slate-300{ border-color: #2B323D !important; }
+.dark .text-slate-900  { color: #F3F4F6 !important; }
+.dark .text-slate-800  { color: #E5E7EB !important; }
+.dark .text-slate-700  { color: #D1D5DB !important; }
+.dark .text-slate-600  { color: #9CA3AF !important; }
+.dark .text-slate-500  { color: #9CA3AF !important; }
+.dark .text-slate-400  { color: #6B7280 !important; }
+.dark .text-slate-300  { color: #9CA3AF !important; }
+.dark .shadow-xs       { box-shadow: 0 1px 3px rgba(0,0,0,0.6) !important; }
+.dark .shadow-sm       { box-shadow: 0 2px 4px rgba(0,0,0,0.6) !important; }
+.dark .shadow-md       { box-shadow: 0 4px 12px rgba(0,0,0,0.7) !important; }
 
 /* ─── Gradient backgrounds ─── */
 .gradient-emerald { background: linear-gradient(135deg, #10b981, #059669); }
