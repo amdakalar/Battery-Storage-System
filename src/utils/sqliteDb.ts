@@ -4,7 +4,6 @@
  */
 
 import initSqlJs, { Database } from 'sql.js';
-import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { Battery, ChargeRecord } from '../types';
 import { getTodayISODate, calculateDaysBetween } from './dateUtils';
 
@@ -15,13 +14,9 @@ let initPromise: Promise<Database> | null = null;
 
 /**
  * Resolves the path to the sql-wasm.wasm file.
- * Vite WASM URL import ensures proper MIME type (application/wasm) and valid pathing
- * in both Vite dev server and Electron production builds.
+ * Compatible with Next.js, Vite, and Electron.
  */
 function locateSqlWasm(file: string): string {
-  if (file.endsWith('.wasm')) {
-    return sqlWasmUrl;
-  }
   return `/sql-wasm.wasm`;
 }
 

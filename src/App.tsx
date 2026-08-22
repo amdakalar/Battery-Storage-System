@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -1730,7 +1732,7 @@ export default function App() {
       <div className="hidden lg:block">
         <Sidebar
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={(v: string) => setActiveView(v as any)}
           batteryCount={batteries.length}
           urgentCount={urgentBatteries.length}
           onOpenAddModal={() => setIsAddModalOpen(true)}
@@ -2079,7 +2081,7 @@ export default function App() {
       {/* Bottom Navigation - Mobile & Desktop Quick Actions */}
       <BottomNavBar
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={(v: string) => setActiveView(v as any)}
         urgentCount={urgentBatteries.length}
         onOpenAddModal={() => setIsAddModalOpen(true)}
       />

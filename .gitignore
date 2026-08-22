@@ -6,6 +6,7 @@ dist/
 dist-electron/
 release/
 build/
+.next/
 
 # Generated files (copied by prepare-build.js — regenerated on each build)
 public/sql-wasm.wasm

@@ -320,12 +320,12 @@ export const BatteryCard: React.FC<BatteryCardProps> = ({
                 <div className="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
                   <span>خانەکانی باتری (Cell 1 - Cell 12)</span>
                   <span className="text-[10px] font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full">
-                    {Object.values(battery.cells).filter(v => v !== undefined && v !== null && v !== '').length} خانەی چالاک
+                    {Object.values(battery.cells).filter(v => v !== undefined && v !== null && (v as any) !== '').length} خانەی چالاک
                   </span>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                   {Object.entries(battery.cells)
-                    .filter(([_, value]) => value !== undefined && value !== null && value !== '')
+                    .filter(([_, value]) => value !== undefined && value !== null && (value as any) !== '')
                     .map(([key, value]) => {
                       const cellNum = key.replace('cell', '');
                       return (

@@ -17,7 +17,10 @@
     "prepare": "node scripts/prepare-build.js",
     "dev": "npm run prepare && npm run electron:build && concurrently -n VITE,ELECTRON -c cyan,green \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron dist-electron/main.js\"",
     "dev:desktop": "npm run dev",
+    "dev:web": "next dev",
     "vite:build": "vite build",
+    "build:web": "next build --webpack",
+    "start:web": "next start",
     "electron:build": "node scripts/build-electron.mjs",
     "build": "npm run prepare && npm run vite:build && npm run electron:build",
     "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --config electron-builder.yml",
@@ -26,10 +29,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1116.0",
+    "@aws-sdk/s3-request-presigner": "^3.1116.0",
     "@google/genai": "^2.4.0",
     "@heroicons/react": "^2.2.0",
+    "@libsql/client": "^0.17.4",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "next": "^16.3.2",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "sql.js": "^1.14.1"
@@ -37,6 +44,8 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
