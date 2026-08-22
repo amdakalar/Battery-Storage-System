@@ -1,8 +1,5 @@
 {
-  "name": "storage",
+  "name": "battery-storage-system",
   "framework": "nextjs",
-  "buildCommand": "npm run build:web",
-  "alias": [
-    "storage.vercel.app"
-  ]
+  "buildCommand": "npm run build:web"
 }
