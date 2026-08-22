@@ -1,0 +1,2040 @@
+{
+  "batteries": [
+    {
+      "name": "DATA LINK",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277813666",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879239949_4gp6",
+          "batteryId": "bat_1785277813666",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277813666",
+          "batteryId": "bat_1785277813666",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.98,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D16 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277806112",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786959489528_oux1",
+          "batteryId": "bat_1785277806112",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 0,
+          "notes": "ستۆرجکردنی تۆمارکراو بە مێژووی دەستکرد"
+        },
+        {
+          "id": "hist_1786959388809_9buv",
+          "batteryId": "bat_1785277806112",
+          "chargeDate": "2026-08-17",
+          "daysSincePrevious": 42,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277806112",
+          "batteryId": "bat_1785277806112",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.98,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D15 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277792925",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879104703_rikj",
+          "batteryId": "bat_1785277792925",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277792925",
+          "batteryId": "bat_1785277792925",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D14 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277771698",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879444411_flgm",
+          "batteryId": "bat_1785277771698",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277771698",
+          "batteryId": "bat_1785277771698",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 4,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D13 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277754341",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786280007126_bsyj",
+          "batteryId": "bat_1785277754341",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277754341",
+          "batteryId": "bat_1785277754341",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D12 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277742310",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283412938_6v7k",
+          "batteryId": "bat_1785277742310",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277742310",
+          "batteryId": "bat_1785277742310",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D11 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277730935",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786279945602_v64i",
+          "batteryId": "bat_1785277730935",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277730935",
+          "batteryId": "bat_1785277730935",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D5 (CAMERA) 10 KG",
+      "category": "درۆن (کامێرا) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785277518212",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787126893972_caoe",
+          "batteryId": "bat_1785277518212",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785277518212",
+          "batteryId": "bat_1785277518212",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D4 (CAMERA) 10 KG",
+      "category": "درۆن (کامێرا) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276885730",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787136105389_kv1q",
+          "batteryId": "bat_1785276885730",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276885730",
+          "batteryId": "bat_1785276885730",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D3 (CAMERA) 10 KG",
+      "category": "درۆن (کامێرا) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276874384",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787126808773_loez",
+          "batteryId": "bat_1785276874384",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276874384",
+          "batteryId": "bat_1785276874384",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D2 (CAMERA) 10 KG",
+      "category": "درۆن (کامێرا) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276867357",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787126870333_un92",
+          "batteryId": "bat_1785276867357",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276867357",
+          "batteryId": "bat_1785276867357",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D1 (CAMERA) 10 KG",
+      "category": "درۆن (کامێرا) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276859704",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787136049125_68w2",
+          "batteryId": "bat_1785276859704",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276859705",
+          "batteryId": "bat_1785276859704",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 4.01,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D4 (CAMERA) 5 KG",
+      "category": "درۆن (کامێرا) 5kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276805991",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785276805991",
+          "batteryId": "bat_1785276805991",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D3 (CAMERA) 5 KG",
+      "category": "درۆن (کامێرا) 5kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276798589",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785276798589",
+          "batteryId": "bat_1785276798589",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D2 (CAMERA) 5 KG",
+      "category": "درۆن (کامێرا) 5kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276789045",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785276789045",
+          "batteryId": "bat_1785276789045",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D1 (CAMERA) 5 KG",
+      "category": "درۆن (کامێرا) 5kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276771040",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785276771040",
+          "batteryId": "bat_1785276771040",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D10 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276409253",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786279618909_qvk8",
+          "batteryId": "bat_1785276409253",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276409253",
+          "batteryId": "bat_1785276409253",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D9 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276399803",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786279657181_c6ry",
+          "batteryId": "bat_1785276399803",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276399803",
+          "batteryId": "bat_1785276399803",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D8 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276393013",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786279555875_lei2",
+          "batteryId": "bat_1785276393013",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276393013",
+          "batteryId": "bat_1785276393013",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D7 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276386243",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786279461711_v3ee",
+          "batteryId": "bat_1785276386243",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276386243",
+          "batteryId": "bat_1785276386243",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4.01,
+        "cell4": 4.01,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 4.01,
+        "cell8": 4,
+        "cell9": 4.01,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D6 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276374651",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283344845_dspp",
+          "batteryId": "bat_1785276374651",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276374651",
+          "batteryId": "bat_1785276374651",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D5 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276341992",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786280094736_aok8",
+          "batteryId": "bat_1785276341992",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276341992",
+          "batteryId": "bat_1785276341992",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D4 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276317142",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879174865_9l4h",
+          "batteryId": "bat_1785276317142",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 7,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_1786279826076_lqqc",
+          "batteryId": "bat_1785276317142",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 34,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276317142",
+          "batteryId": "bat_1785276317142",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.98,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D3 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276302489",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879282840_u8cz",
+          "batteryId": "bat_1785276302489",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276302489",
+          "batteryId": "bat_1785276302489",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D2 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276253017",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786280047069_3hhd",
+          "batteryId": "bat_1785276253017",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276253017",
+          "batteryId": "bat_1785276253017",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D1 (GPS) 5 KG",
+      "category": "درۆن (GPS) 5kg",
+      "lastChargeDate": "2026-08-16",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785276228956",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786879364672_7ga1",
+          "batteryId": "bat_1785276228956",
+          "chargeDate": "2026-08-16",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785276228956",
+          "batteryId": "bat_1785276228956",
+          "chargeDate": "2026-07-06",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D15 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "تەنها باتریە",
+      "id": "bat_1785275932191",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785275932191",
+          "batteryId": "bat_1785275932191",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D14 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275915593",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283571945_uqj5",
+          "batteryId": "bat_1785275915593",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275915593",
+          "batteryId": "bat_1785275915593",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D13 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275904278",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786287236661_nt4e",
+          "batteryId": "bat_1785275904278",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275904278",
+          "batteryId": "bat_1785275904278",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D12 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275893090",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283812775_p8kz",
+          "batteryId": "bat_1785275893090",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275893090",
+          "batteryId": "bat_1785275893090",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D11 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275884293",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283476158_zleq",
+          "batteryId": "bat_1785275884293",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275884293",
+          "batteryId": "bat_1785275884293",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D10 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275852275",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787126702194_8p0z",
+          "batteryId": "bat_1785275852275",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275852275",
+          "batteryId": "bat_1785275852275",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 3.99,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4.01,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D9 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-07-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275834997",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_init_1785275834997",
+          "batteryId": "bat_1785275834997",
+          "chargeDate": "2026-07-19",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    },
+    {
+      "name": "D8 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275815012",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283699786_gisy",
+          "batteryId": "bat_1785275815012",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275815012",
+          "batteryId": "bat_1785275815012",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 63.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D7 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275805854",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283487819_qtog",
+          "batteryId": "bat_1785275805854",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275805854",
+          "batteryId": "bat_1785275805854",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 4,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D5 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275791792",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786283601115_2gzw",
+          "batteryId": "bat_1785275791792",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275791792",
+          "batteryId": "bat_1785275791792",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.98,
+        "cell9": 3.99,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D4 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-09",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275754751",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1786286335048_tnhr",
+          "batteryId": "bat_1785275754751",
+          "chargeDate": "2026-08-09",
+          "daysSincePrevious": 40,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275754751",
+          "batteryId": "bat_1785275754751",
+          "chargeDate": "2026-06-30",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 4,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D3 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-19",
+      "reminderIntervalDays": 40,
+      "notes": "",
+      "id": "bat_1785275723913",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1787126761374_1g8j",
+          "batteryId": "bat_1785275723913",
+          "chargeDate": "2026-08-19",
+          "daysSincePrevious": 38,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275723913",
+          "batteryId": "bat_1785275723913",
+          "chargeDate": "2026-07-12",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 3.99,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 4,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D1 (GPS) 10KG",
+      "category": "درۆن (GPS) 10kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 40,
+      "notes": "لە کاتی چالاکی  شکاوە",
+      "id": "bat_1785275688139",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697454548_gwgj",
+          "batteryId": "bat_1785275688139",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 41,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275688139",
+          "batteryId": "bat_1785275688139",
+          "chargeDate": "2026-06-22",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4.01
+      }
+    },
+    {
+      "name": "D15 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275491931",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696986228_74zz",
+          "batteryId": "bat_1785275491931",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275491931",
+          "batteryId": "bat_1785275491931",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D14 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275481664",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696895966_xou8",
+          "batteryId": "bat_1785275481664",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275481664",
+          "batteryId": "bat_1785275481664",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.98,
+        "cell2": 3.99,
+        "cell3": 3.98,
+        "cell4": 3.98,
+        "cell5": 3.98,
+        "cell6": 3.98,
+        "cell7": 3.99,
+        "cell8": 3.98,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.97,
+        "cell12": 3.98
+      }
+    },
+    {
+      "name": "D13 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275472789",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697051970_g78r",
+          "batteryId": "bat_1785275472789",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275472789",
+          "batteryId": "bat_1785275472789",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.98
+      }
+    },
+    {
+      "name": "D12 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "٢ ئەنتێنای نیە",
+      "id": "bat_1785275382450",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697247077_2fvk",
+          "batteryId": "bat_1785275382450",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275382450",
+          "batteryId": "bat_1785275382450",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 4,
+        "cell11": 3.99,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D11 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "پەروانەی نیە",
+      "id": "bat_1785275372815",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697363464_ucux",
+          "batteryId": "bat_1785275372815",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275372815",
+          "batteryId": "bat_1785275372815",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4.01,
+        "cell3": 4,
+        "cell4": 4.01,
+        "cell5": 4.01,
+        "cell6": 3.98,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4.01,
+        "cell12": 4.01
+      }
+    },
+    {
+      "name": "D10 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-03",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275363739",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785787527954_bcru",
+          "batteryId": "bat_1785275363739",
+          "chargeDate": "2026-08-03",
+          "daysSincePrevious": 33,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275363739",
+          "batteryId": "bat_1785275363739",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4,
+        "cell3": 4,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 4,
+        "cell9": 4,
+        "cell10": 4,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D9 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275352801",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696608393_gv9t",
+          "batteryId": "bat_1785275352801",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 0,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_1785696605833_us8s",
+          "batteryId": "bat_1785275352801",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275352801",
+          "batteryId": "bat_1785275352801",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 4,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 4
+      }
+    },
+    {
+      "name": "D8 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275342138",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697152171_4rxx",
+          "batteryId": "bat_1785275342138",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 0,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_1785697111384_tgc4",
+          "batteryId": "bat_1785275342138",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275342138",
+          "batteryId": "bat_1785275342138",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.98,
+        "cell3": 3.98,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.98,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D7 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275330668",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697303756_yk04",
+          "batteryId": "bat_1785275330668",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 0,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_1785697302820_rg4o",
+          "batteryId": "bat_1785275330668",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275330668",
+          "batteryId": "bat_1785275330668",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 4,
+        "cell5": 3.99,
+        "cell6": 4,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D6 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275318648",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785697290519_xlxa",
+          "batteryId": "bat_1785275318648",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 0,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_1785697194173_70wn",
+          "batteryId": "bat_1785275318648",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275318648",
+          "batteryId": "bat_1785275318648",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 4,
+        "cell10": 3.99,
+        "cell11": 4,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D5  (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275308981",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696429631_k8o4",
+          "batteryId": "bat_1785275308981",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275308981",
+          "batteryId": "bat_1785275308981",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.98,
+        "cell4": 4,
+        "cell5": 3.98,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.98,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D4 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275298609",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696781920_y3hw",
+          "batteryId": "bat_1785275298609",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275298609",
+          "batteryId": "bat_1785275298609",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D3 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275290138",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696684153_auff",
+          "batteryId": "bat_1785275290138",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275290139",
+          "batteryId": "bat_1785275290138",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 4,
+        "cell2": 4.01,
+        "cell3": 4.01,
+        "cell4": 4.01,
+        "cell5": 4,
+        "cell6": 4,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 4.01,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D2 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-03",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "id": "bat_1785275282378",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785787446262_f4dz",
+          "batteryId": "bat_1785275282378",
+          "chargeDate": "2026-08-03",
+          "daysSincePrevious": 33,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275282378",
+          "batteryId": "bat_1785275282378",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ],
+      "cells": {
+        "cell1": 3.99,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.98,
+        "cell6": 3.98,
+        "cell7": 4,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      }
+    },
+    {
+      "name": "D1 (CAMERA) 2 KG",
+      "category": "درۆن (کامێرا) 2kg",
+      "lastChargeDate": "2026-08-02",
+      "reminderIntervalDays": 30,
+      "notes": "",
+      "cells": {
+        "cell1": 4,
+        "cell2": 3.99,
+        "cell3": 3.99,
+        "cell4": 3.99,
+        "cell5": 3.99,
+        "cell6": 3.99,
+        "cell7": 3.99,
+        "cell8": 3.99,
+        "cell9": 3.99,
+        "cell10": 3.99,
+        "cell11": 3.99,
+        "cell12": 3.99
+      },
+      "id": "bat_1785275267304",
+      "createdAt": "2026-07-29",
+      "history": [
+        {
+          "id": "hist_1785696841955_yy92",
+          "batteryId": "bat_1785275267304",
+          "chargeDate": "2026-08-02",
+          "daysSincePrevious": 32,
+          "notes": "ستۆرجکرا لەم ڕێکەوتەدا"
+        },
+        {
+          "id": "hist_init_1785275267304",
+          "batteryId": "bat_1785275267304",
+          "chargeDate": "2026-07-01",
+          "notes": "دروستکردنی ڕیکۆرد و یەکەم ستۆرج"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "enableAudioAlerts": true,
+    "enableBrowserNotifications": false,
+    "theme": "light"
+  },
+  "categories": [
+    {
+      "id": "درۆن (کامێرا) 2kg",
+      "name": "درۆن (کامێرا) 2kg",
+      "type": "CAMERA",
+      "typeLabel": "کامێرا",
+      "weight": "2kg",
+      "icon": "📷",
+      "badgeColor": "bg-indigo-50 text-indigo-700 border-indigo-200",
+      "headerBg": "bg-indigo-50/50",
+      "borderColor": "border-indigo-200",
+      "isCustom": false
+    },
+    {
+      "id": "درۆن (کامێرا) 5kg",
+      "name": "درۆن (کامێرا) 5kg",
+      "type": "CAMERA",
+      "typeLabel": "کامێرا",
+      "weight": "5kg",
+      "icon": "📷",
+      "badgeColor": "bg-blue-50 text-blue-700 border-blue-200",
+      "headerBg": "bg-blue-50/50",
+      "borderColor": "border-blue-200",
+      "isCustom": false
+    },
+    {
+      "id": "درۆن (کامێرا) 10kg",
+      "name": "درۆن (کامێرا) 10kg",
+      "type": "CAMERA",
+      "typeLabel": "کامێرا",
+      "weight": "10kg",
+      "icon": "📷",
+      "badgeColor": "bg-cyan-50 text-cyan-700 border-cyan-200",
+      "headerBg": "bg-cyan-50/50",
+      "borderColor": "border-cyan-200",
+      "isCustom": false
+    },
+    {
+      "id": "درۆن (GPS) 5kg",
+      "name": "درۆن (GPS) 5kg",
+      "type": "GPS",
+      "typeLabel": "GPS",
+      "weight": "5kg",
+      "icon": "🛰️",
+      "badgeColor": "bg-emerald-50 text-emerald-700 border-emerald-200",
+      "headerBg": "bg-emerald-50/50",
+      "borderColor": "border-emerald-200",
+      "isCustom": false
+    },
+    {
+      "id": "درۆن (GPS) 10kg",
+      "name": "درۆن (GPS) 10kg",
+      "type": "GPS",
+      "typeLabel": "GPS",
+      "weight": "10kg",
+      "icon": "🛰️",
+      "badgeColor": "bg-teal-50 text-teal-700 border-teal-200",
+      "headerBg": "bg-teal-50/50",
+      "borderColor": "border-teal-200",
+      "isCustom": false
+    }
+  ],
+  "exportDate": "2026-08-22T14:40:40.981Z"
+}

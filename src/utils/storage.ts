@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 import { generate50SampleBatteries } from './sampleData';
 
+import initialData from '../constants/initialBatteries.json';
 import { syncAllToSQLite, loadSQLiteBatteries, clearSQLiteDatabase } from './sqliteDb';
 
 /**
@@ -25,7 +26,15 @@ import { syncAllToSQLite, loadSQLiteBatteries, clearSQLiteDatabase } from './sql
 export function loadBatteries(): Battery[] {
   try {
     const raw = localStorage.getItem(BATTERIES_STORAGE_KEY);
-    if (!raw) {
+    if (raw === null) {
+      // First time launch on clean install: pre-seed with official 54 batteries
+      if (initialData && Array.isArray((initialData as any).batteries) && (initialData as any).batteries.length > 0) {
+        const initial = (initialData as any).batteries;
+        try {
+          localStorage.setItem(BATTERIES_STORAGE_KEY, JSON.stringify(initial));
+        } catch (e) {}
+        return initial;
+      }
       return [];
     }
     const parsed = JSON.parse(raw);

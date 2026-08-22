@@ -37,6 +37,55 @@ async function createDatabase() {
       CREATE INDEX IF NOT EXISTS idx_batteries_createdAt ON batteries (createdAt DESC);
     `);
 
+    // Pre-populate with initial 54 batteries if available
+    const initialJsonPath = path.join(__dirname, '..', 'src', 'constants', 'initialBatteries.json');
+    if (fs.existsSync(initialJsonPath)) {
+      try {
+        const payload = JSON.parse(fs.readFileSync(initialJsonPath, 'utf8'));
+        const batteries = payload.batteries || [];
+        console.log(`📦 Pre-seeding ${batteries.length} batteries into production SQLite db...`);
+
+        for (const b of batteries) {
+          const cellsJson = b.cells ? JSON.stringify(b.cells) : null;
+          db.run(
+            `INSERT OR REPLACE INTO batteries (id, name, category, lastChargeDate, reminderIntervalDays, voltage, notes, cells_json, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              b.id,
+              b.name,
+              b.category,
+              b.lastChargeDate,
+              b.reminderIntervalDays || 40,
+              b.voltage || null,
+              b.notes || null,
+              cellsJson,
+              b.createdAt || new Date().toISOString(),
+            ]
+          );
+
+          if (b.history && Array.isArray(b.history)) {
+            for (const h of b.history) {
+              db.run(
+                `INSERT OR REPLACE INTO charge_history (id, batteryId, chargeDate, chargeTime, daysSincePrevious, notes, percentage)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  h.id,
+                  b.id,
+                  h.chargeDate,
+                  h.chargeTime || null,
+                  h.daysSincePrevious || null,
+                  h.notes || null,
+                  h.percentage || null,
+                ]
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Warning pre-seeding initial batteries:', e.message);
+      }
+    }
+
     const data = db.export();
     const buffer = Buffer.from(data);
     
