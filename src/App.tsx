@@ -51,7 +51,7 @@ import { CustomDialog, DialogConfig } from './components/CustomDialog';
 import { getLicenseState } from './utils/licenseManager';
 import { LicenseState, UpdateCheckResult, User } from './types';
 import { DroneCategoryInfo, loadCategories, addCustomCategory, updateCategory, deleteCustomCategory, getNormalizedCategory, DEFAULT_CATEGORY } from './constants/categories';
-import { APP_CONFIG } from './constants/appConfig';
+import { APP_CONFIG, isNewerVersion, cleanVersion } from './constants/appConfig';
 import { LoginPage } from './components/LoginPage';
 import { ChangelogView } from './components/ChangelogView';
 import { UsersManagementView } from './components/UsersManagementView';
@@ -374,20 +374,12 @@ export default function App() {
       refreshPendingCount();
     }
 
-    // 3. Auto-check for updates silently after 2 seconds (desktop)
-    const timer = setTimeout(async () => {
-      try {
-        if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
-          const res = await (window as any).electronAPI.checkForUpdate();
-          if (isMounted && res && res.success && res.hasUpdate) {
-            setUpdateCheckResult(res);
-            setIsUpdateModalOpen(true);
-          }
-        }
-      } catch {
-        /* silent catch */
+    // 3. Auto-check for updates silently after 1.5 seconds (desktop & web)
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        handleCheckForUpdates(true);
       }
-    }, 2000);
+    }, 1500);
 
     return () => {
       isMounted = false;
@@ -680,49 +672,84 @@ export default function App() {
     });
   };
 
-  // Action: GitHub Release Update Check (Fully Automatic)
+  // Action: GitHub Release Update Check (Fully Automatic & Web/Desktop Hybrid)
   const handleCheckForUpdates = async (isSilent: boolean = false) => {
     setIsCheckingUpdate(true);
     setUpdateCheckError(null);
 
     try {
+      let res: any = null;
       if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
-        const res = await (window as any).electronAPI.checkForUpdate();
-        setIsCheckingUpdate(false);
-        if (res.success) {
-          setUpdateCheckResult(res);
-          if (res.hasUpdate) {
-            setIsUpdateModalOpen(true);
-          } else if (!isSilent) {
-            showAlert({
-              type: 'success',
-              title: 'پشکنینی وەشانی بەرنامە',
-              message: `زۆر باشە! وەشانی بەرنامەکەت نوێترین وەشانە (v${res.currentVersion}).`,
-              subMessage: 'هیچ وەشانێکی نوێتر لەسەر سێرڤەر و گیتهاپ بەردەست نییە.',
-              confirmText: 'باشە',
-            });
+        res = await (window as any).electronAPI.checkForUpdate();
+      } else {
+        // Direct GitHub Web Check
+        const repo = APP_CONFIG.GITHUB_REPO;
+        const currentVersion = APP_CONFIG.CURRENT_VERSION;
+        let latestVersion = '';
+        let releaseName = '';
+        let releaseNotes = '';
+        let htmlUrl = `https://github.com/${repo}`;
+
+        try {
+          const apiRes = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+          if (apiRes.ok) {
+            const data = await apiRes.json();
+            latestVersion = data.tag_name || data.name || '';
+            releaseName = data.name || latestVersion;
+            releaseNotes = data.body || 'وەشانی نوێ لەسەر GitHub بەردەستە.';
+            htmlUrl = data.html_url || htmlUrl;
+          } else {
+            // Fallback to tags API
+            const tagsRes = await fetch(`https://api.github.com/repos/${repo}/tags`);
+            if (tagsRes.ok) {
+              const tags = await tagsRes.json();
+              if (Array.isArray(tags) && tags.length > 0) {
+                latestVersion = tags[0].name || '';
+                releaseName = `وەشانی نوێ ${latestVersion}`;
+                releaseNotes = `وەشانی نوێتر (${latestVersion}) لەسەر سێرڤەری GitHub بەردەستە.`;
+                htmlUrl = `https://github.com/${repo}/releases/tag/${latestVersion}`;
+              }
+            }
           }
-        } else {
-          const errMsg = res.error || 'کێشە لە وەرگرتنی ئەپدەیت ڕوویدا';
-          if (!isSilent) {
-            setUpdateCheckError(errMsg);
-            showAlert({
-              type: 'error',
-              title: 'کێشە لە پشکنینی ئەپدەیت',
-              message: errMsg,
-              subMessage: 'تکایە دڵنیابەرەوە لە هەبوونی هێڵی ئینتەرنێت و پەیوەندی بە GitHub.',
-            });
-          }
+        } catch (fetchErr) {
+          // Ignore network errors in silent check
+        }
+
+        const hasUpdate = isNewerVersion(latestVersion || currentVersion, currentVersion);
+        res = {
+          success: true,
+          hasUpdate,
+          latestVersion: cleanVersion(latestVersion || currentVersion),
+          currentVersion,
+          releaseName: releaseName || `v${currentVersion}`,
+          releaseNotes,
+          htmlUrl,
+        };
+      }
+
+      setIsCheckingUpdate(false);
+      if (res && res.success) {
+        setUpdateCheckResult(res);
+        if (res.hasUpdate) {
+          setIsUpdateModalOpen(true);
+        } else if (!isSilent) {
+          showAlert({
+            type: 'success',
+            title: 'پشکنینی وەشانی بەرنامە',
+            message: `زۆر باشە! وەشانی بەرنامەکەت نوێترین وەشانە (v${res.currentVersion}).`,
+            subMessage: 'هیچ وەشانێکی نوێتر لەسەر سێرڤەر و گیتهاپ بەردەست نییە.',
+            confirmText: 'باشە',
+          });
         }
       } else {
-        setIsCheckingUpdate(false);
-        const errMsg = 'ئەم تایبەتمەندییە تەنها لە ناو بەرنامەی سەر کۆمپیوتەر (Electron) ئیش دەکات.';
+        const errMsg = res?.error || 'کێشە لە وەرگرتنی ئەپدەیت ڕوویدا';
         if (!isSilent) {
           setUpdateCheckError(errMsg);
           showAlert({
-            type: 'warning',
-            title: 'ئاگاداری سیستەم',
+            type: 'error',
+            title: 'کێشە لە پشکنینی ئەپدەیت',
             message: errMsg,
+            subMessage: 'تکایە دڵنیابەرەوە لە هەبوونی هێڵی ئینتەرنێت و پەیوەندی بە GitHub.',
           });
         }
       }

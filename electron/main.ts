@@ -411,44 +411,67 @@ ipcMain.handle('check-github-update', async (_event, customRepo?: string) => {
       };
     }
 
+    const currentVersion = app.getVersion();
+    let latestVersion = '';
+    let releaseName = '';
+    let releaseNotes = '';
+    let publishedAt = '';
+    let downloadUrl: string | undefined = undefined;
+    let fileName: string | undefined = undefined;
+    let fileSize: number | undefined = undefined;
+    let htmlUrl = `https://github.com/${repoPath}`;
+
+    // 1. Try Releases API
     const apiUrl = `https://api.github.com/repos/${repoPath}/releases/latest`;
     log('INFO', `Checking for updates from: ${apiUrl}`);
     const releaseData = await fetchJson(apiUrl);
 
-    const currentVersion = app.getVersion();
+    if (!releaseData.notFound && (releaseData.tag_name || releaseData.name)) {
+      latestVersion = releaseData.tag_name || releaseData.name || '';
+      releaseName = releaseData.name || latestVersion;
+      releaseNotes = releaseData.body || 'تەواوی گۆڕانکاری و نوێکارییەکان لە وەشانی نوێدا بەردەستن.';
+      publishedAt = releaseData.published_at;
+      htmlUrl = releaseData.html_url || htmlUrl;
 
-    if (releaseData.notFound) {
-      log('INFO', 'No GitHub release found for this repository yet.');
-      return {
-        success: true,
-        hasUpdate: false,
-        latestVersion: currentVersion,
-        currentVersion,
-        releaseName: `v${currentVersion}`,
-        releaseNotes: 'تا ئێستا هیچ وەشانێکی نوێ لە بەشی Releases لە گیتهاپ دانەنراوە.',
-      };
+      let exeAsset = (releaseData.assets || []).find((a: any) => a.name.endsWith('.exe'));
+      if (!exeAsset && releaseData.assets && releaseData.assets.length > 0) {
+        exeAsset = releaseData.assets[0];
+      }
+      if (exeAsset) {
+        downloadUrl = exeAsset.browser_download_url;
+        fileName = exeAsset.name;
+        fileSize = exeAsset.size;
+      }
+    } else {
+      // 2. Fallback to Tags API if no formal GitHub Release object exists
+      log('INFO', 'No formal GitHub release object found. Checking repository tags fallback...');
+      try {
+        const tagsData = await fetchJson(`https://api.github.com/repos/${repoPath}/tags`);
+        if (Array.isArray(tagsData) && tagsData.length > 0) {
+          latestVersion = tagsData[0].name || '';
+          releaseName = `وەشانی نوێ ${latestVersion}`;
+          releaseNotes = `وەشانی نوێتر (${latestVersion}) لەسەر سێرڤەری GitHub بەردەستە.`;
+          htmlUrl = `https://github.com/${repoPath}/releases/tag/${latestVersion}`;
+        }
+      } catch (tagErr) {
+        log('WARN', `Tags check fallback error: ${tagErr}`);
+      }
     }
 
-    const latestVersion = releaseData.tag_name || releaseData.name || '';
-    const hasUpdate = isNewerVersion(latestVersion, currentVersion);
-
-    let exeAsset = (releaseData.assets || []).find((a: any) => a.name.endsWith('.exe'));
-    if (!exeAsset && releaseData.assets && releaseData.assets.length > 0) {
-      exeAsset = releaseData.assets[0];
-    }
+    const hasUpdate = isNewerVersion(latestVersion || currentVersion, currentVersion);
 
     return {
       success: true,
       hasUpdate,
-      latestVersion: cleanVersion(latestVersion),
+      latestVersion: cleanVersion(latestVersion || currentVersion),
       currentVersion,
-      releaseName: releaseData.name || latestVersion,
-      releaseNotes: releaseData.body || 'هیچ تێبینییەک لەگەڵ وەشانی نوێدا نەنووسراوە.',
-      publishedAt: releaseData.published_at,
-      downloadUrl: exeAsset ? exeAsset.browser_download_url : undefined,
-      fileName: exeAsset ? exeAsset.name : undefined,
-      fileSize: exeAsset ? exeAsset.size : undefined,
-      htmlUrl: releaseData.html_url,
+      releaseName: releaseName || `v${currentVersion}`,
+      releaseNotes: releaseNotes || 'ئەم وەشانە نوێکارییەکان و چاکسازییەکانی تێدایە.',
+      publishedAt,
+      downloadUrl,
+      fileName,
+      fileSize,
+      htmlUrl,
     };
   } catch (err: any) {
     log('ERROR', `GitHub Update Check failed: ${err.message}`);

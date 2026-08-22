@@ -3,6 +3,7 @@
 import { getTursoClient, initTursoTables } from '@/src/lib/turso';
 import { Battery, ChargeRecord, ActivityLog, DeletionLog } from '@/src/types';
 import { getTodayISODate } from '@/src/utils/dateUtils';
+import { loadBatteries, saveBatteries } from '@/src/utils/storage';
 
 // Auto-initialize schema on server runtime
 let tablesInitialized = false;
@@ -57,71 +58,82 @@ async function logActivity(
 export async function getBatteriesAction(
   filterUserId?: string
 ): Promise<Battery[]> {
-  await ensureTables();
-  const client = getTursoClient();
+  try {
+    await ensureTables();
+    const client = getTursoClient();
 
-  let batteryRows: any;
-  let historyRows: any;
+    let batteryRows: any;
+    let historyRows: any;
 
-  if (!filterUserId) {
-    batteryRows = await client.execute(`SELECT * FROM batteries ORDER BY createdAt DESC`);
-    historyRows = await client.execute(`SELECT * FROM charge_history ORDER BY chargeDate DESC, chargeTime DESC`);
-  } else {
-    batteryRows = await client.execute({
-      sql: `SELECT * FROM batteries WHERE userId = ? ORDER BY createdAt DESC`,
-      args: [filterUserId],
-    });
-    historyRows = await client.execute({
-      sql: `SELECT * FROM charge_history WHERE userId = ? ORDER BY chargeDate DESC, chargeTime DESC`,
-      args: [filterUserId],
-    });
-  }
-
-  const historyByBattery: Record<string, ChargeRecord[]> = {};
-  for (const row of historyRows.rows) {
-    const bId = String(row.batteryId);
-    if (!historyByBattery[bId]) historyByBattery[bId] = [];
-    historyByBattery[bId].push({
-      id: String(row.id),
-      batteryId: bId,
-      userId: row.userId ? String(row.userId) : undefined,
-      authorName: row.authorName ? String(row.authorName) : undefined,
-      chargeDate: String(row.chargeDate),
-      chargeTime: row.chargeTime ? String(row.chargeTime) : undefined,
-      daysSincePrevious: row.daysSincePrevious ? Number(row.daysSincePrevious) : undefined,
-      notes: row.notes ? String(row.notes) : undefined,
-      percentage: row.percentage ? Number(row.percentage) : undefined,
-    });
-  }
-
-  const batteries: Battery[] = batteryRows.rows.map((row: any) => {
-    let cells: any = undefined;
-    if (row.cells_json) {
-      try {
-        cells = JSON.parse(String(row.cells_json));
-      } catch (e) {
-        cells = undefined;
-      }
+    if (!filterUserId) {
+      batteryRows = await client.execute(`SELECT * FROM batteries ORDER BY createdAt DESC`);
+      historyRows = await client.execute(`SELECT * FROM charge_history ORDER BY chargeDate DESC, chargeTime DESC`);
+    } else {
+      batteryRows = await client.execute({
+        sql: `SELECT * FROM batteries WHERE userId = ? ORDER BY createdAt DESC`,
+        args: [filterUserId],
+      });
+      historyRows = await client.execute({
+        sql: `SELECT * FROM charge_history WHERE userId = ? ORDER BY chargeDate DESC, chargeTime DESC`,
+        args: [filterUserId],
+      });
     }
 
-    return {
-      id: String(row.id),
-      userId: row.userId ? String(row.userId) : undefined,
-      authorName: row.authorName ? String(row.authorName) : undefined,
-      name: String(row.name),
-      category: String(row.category),
-      lastChargeDate: String(row.lastChargeDate),
-      reminderIntervalDays: Number(row.reminderIntervalDays || 40),
-      voltage: row.voltage ? Number(row.voltage) : undefined,
-      storagePercentage: row.storagePercentage ? Number(row.storagePercentage) : undefined,
-      notes: row.notes ? String(row.notes) : undefined,
-      createdAt: String(row.createdAt),
-      cells,
-      history: historyByBattery[String(row.id)] || [],
-    };
-  });
+    const historyByBattery: Record<string, ChargeRecord[]> = {};
+    for (const row of historyRows.rows) {
+      const bId = String(row.batteryId);
+      if (!historyByBattery[bId]) historyByBattery[bId] = [];
+      historyByBattery[bId].push({
+        id: String(row.id),
+        batteryId: bId,
+        userId: row.userId ? String(row.userId) : undefined,
+        authorName: row.authorName ? String(row.authorName) : undefined,
+        chargeDate: String(row.chargeDate),
+        chargeTime: row.chargeTime ? String(row.chargeTime) : undefined,
+        daysSincePrevious: row.daysSincePrevious ? Number(row.daysSincePrevious) : undefined,
+        notes: row.notes ? String(row.notes) : undefined,
+        percentage: row.percentage ? Number(row.percentage) : undefined,
+      });
+    }
 
-  return batteries;
+    const batteries: Battery[] = batteryRows.rows.map((row: any) => {
+      let cells: any = undefined;
+      if (row.cells_json) {
+        try {
+          cells = JSON.parse(String(row.cells_json));
+        } catch (e) {
+          cells = undefined;
+        }
+      }
+
+      return {
+        id: String(row.id),
+        userId: row.userId ? String(row.userId) : undefined,
+        authorName: row.authorName ? String(row.authorName) : undefined,
+        name: String(row.name),
+        category: String(row.category),
+        lastChargeDate: String(row.lastChargeDate),
+        reminderIntervalDays: Number(row.reminderIntervalDays || 40),
+        voltage: row.voltage ? Number(row.voltage) : undefined,
+        storagePercentage: row.storagePercentage ? Number(row.storagePercentage) : undefined,
+        notes: row.notes ? String(row.notes) : undefined,
+        createdAt: String(row.createdAt),
+        cells,
+        history: historyByBattery[String(row.id)] || [],
+      };
+    });
+
+    if (typeof localStorage !== 'undefined' && batteries.length > 0) {
+      try {
+        saveBatteries(batteries);
+      } catch (e) {}
+    }
+
+    return batteries;
+  } catch (err) {
+    console.warn('Could not fetch from Turso cloud (offline mode), loading local cache:', err);
+    return loadBatteries();
+  }
 }
 
 /**
