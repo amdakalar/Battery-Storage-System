@@ -1,7 +1,7 @@
 {
   "name": "battery-storage-system",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Battery Charge Tracking and Maintenance Management System",
   "repository": {
     "type": "git",

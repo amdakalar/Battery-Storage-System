@@ -404,6 +404,17 @@ export async function testTursoConnection(
       return { success: false, error: 'ناونیشانی داتابەیس دەبێت بە libsql:// یان https:// دەستپێبکات (وەک: libsql://your-db.turso.io)' };
     }
 
+    // 1. If running in Electron, proxy query natively through Main process HTTPS (0 CORS, 0 Failed to fetch)
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.tursoExecute) {
+      const res = await (window as any).electronAPI.tursoExecute(targetUrl, targetToken, 'SELECT COUNT(*) as count FROM batteries');
+      if (res && res.success) {
+        const count = Number(res.rows?.[0]?.count || 0);
+        return { success: true, count };
+      }
+      return { success: false, error: res?.error || 'نەتوانرا پەیوەندی بە داتابەیسی کلاودەوە بکرێت' };
+    }
+
+    // 2. Browser / Web Server client
     const testClient = createClient({
       url: targetUrl,
       authToken: targetToken || undefined,
@@ -450,6 +461,34 @@ export function getTursoClient(): Client {
                     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TURSO_AUTH_TOKEN) ||
                     DEFAULT_TURSO_AUTH_TOKEN;
 
+  // 1. If in Electron and remote URL: return native Node.js HTTPS proxy client (100% immune to CORS and Failed to fetch)
+  if (typeof window !== 'undefined' && (window as any).electronAPI?.tursoExecute && isRemoteLibsqlUrl(url)) {
+    tursoClient = {
+      async execute(stmt: any): Promise<any> {
+        const res = await (window as any).electronAPI.tursoExecute(url, authToken, stmt);
+        if (!res || !res.success) {
+          throw new Error(res?.error || 'Turso IPC query failed');
+        }
+        return { rows: res.rows || [], columns: res.columns || [] };
+      },
+      async batch(stmts: any[]): Promise<any[]> {
+        const results: any[] = [];
+        for (const s of stmts) {
+          results.push(await this.execute(s));
+        }
+        return results;
+      },
+      async transaction(): Promise<any> {
+        return this;
+      },
+      close() {},
+      closed: false,
+      protocol: 'ws',
+    } as any;
+    return tursoClient;
+  }
+
+  // 2. Standard remote LibSQL client (for Node.js server / Web)
   if (isRemoteLibsqlUrl(url)) {
     try {
       tursoClient = createClient({
@@ -462,7 +501,7 @@ export function getTursoClient(): Client {
     }
   }
 
-  // Node.js server environment (Server Actions) can use @libsql/client with file:
+  // 3. Node.js server environment (Server Actions) can use @libsql/client with file:
   if (typeof window === 'undefined') {
     try {
       tursoClient = createClient({
@@ -471,11 +510,11 @@ export function getTursoClient(): Client {
       });
       return tursoClient;
     } catch (e) {
-      // Fallback
+      return createWebLocalClient();
     }
   }
 
-  // In Browser / Electron renderer environment when no remote URL is present:
+  // 4. Default web fallback
   tursoClient = createWebLocalClient();
   return tursoClient;
 }

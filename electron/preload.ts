@@ -76,6 +76,12 @@ const electronAPI = {
   },
 
   /**
+   * Proxies Turso Cloud query execution directly through Electron Main process HTTPS.
+   */
+  tursoExecute: (url: string, authToken: string, stmt: any): Promise<any> =>
+    ipcRenderer.invoke('turso-execute', { url, authToken, stmt }),
+
+  /**
    * Quits the application immediately (used before running installer if needed).
    */
   quitApp: (): Promise<void> => ipcRenderer.invoke('quit-app'),

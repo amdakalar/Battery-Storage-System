@@ -546,6 +546,106 @@ ipcMain.handle('quit-app', () => {
   app.quit();
 });
 
+// Proxy Turso Cloud queries natively through Node.js HTTPS in Main Process — 100% immune to CORS and "Failed to fetch"
+ipcMain.handle('turso-execute', async (_event, { url, authToken, stmt }: { url?: string; authToken?: string; stmt: any }) => {
+  try {
+    const targetUrl = (url || '').trim();
+    const targetToken = (authToken || '').trim();
+    if (!targetUrl) return { success: false, error: 'Database URL is required' };
+
+    let httpUrl = targetUrl.replace(/^libsql:\/\//i, 'https://');
+    if (!httpUrl.startsWith('http://') && !httpUrl.startsWith('https://')) {
+      httpUrl = `https://${httpUrl}`;
+    }
+    const endpoint = `${httpUrl.replace(/\/$/, '')}/v2/pipeline`;
+
+    const sql = typeof stmt === 'string' ? stmt : stmt?.sql || '';
+    const args = typeof stmt === 'object' && Array.isArray(stmt?.args) ? stmt.args : [];
+
+    const formattedArgs = args.map((arg: any) => {
+      if (arg === null || arg === undefined) return { type: 'null' };
+      if (typeof arg === 'number') {
+        return Number.isInteger(arg) ? { type: 'integer', value: String(arg) } : { type: 'float', value: arg };
+      }
+      if (typeof arg === 'boolean') {
+        return { type: 'integer', value: arg ? '1' : '0' };
+      }
+      return { type: 'text', value: String(arg) };
+    });
+
+    const payload = JSON.stringify({
+      requests: [
+        {
+          type: 'execute',
+          stmt: {
+            sql,
+            args: formattedArgs,
+          },
+        },
+        { type: 'close' },
+      ],
+    });
+
+    const parsedUrl = new URL(endpoint);
+    const responseText = await new Promise<string>((resolve, reject) => {
+      const options = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': targetToken ? `Bearer ${targetToken}` : '',
+          'User-Agent': 'Battery-Storage-Desktop/1.0',
+          'Content-Length': Buffer.byteLength(payload),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(body);
+          } else {
+            reject(new Error(`Turso HTTP ${res.statusCode}: ${body}`));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(err));
+      req.write(payload);
+      req.end();
+    });
+
+    const data = JSON.parse(responseText);
+    const result = data.results?.[0]?.response?.result;
+    if (!result) {
+      const errMessage = data.results?.[0]?.response?.error?.message || 'Turso query execution failed';
+      return { success: false, error: errMessage };
+    }
+
+    const cols = (result.cols || []).map((c: any) => c.name);
+    const rows = (result.rows || []).map((rowArr: any[]) => {
+      const rowObj: any = {};
+      rowArr.forEach((val: any, idx: number) => {
+        const colName = cols[idx];
+        if (val && val.type === 'null') rowObj[colName] = null;
+        else if (val && val.type === 'integer') rowObj[colName] = parseInt(val.value, 10);
+        else if (val && val.type === 'float') rowObj[colName] = Number(val.value);
+        else if (val && val.type === 'text') rowObj[colName] = String(val.value);
+        else rowObj[colName] = val?.value ?? val;
+      });
+      return rowObj;
+    });
+
+    return { success: true, rows, columns: cols };
+  } catch (err: any) {
+    log('ERROR', `Turso IPC execution error: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+});
+
 // ─── App Lifecycle ────────────────────────────────────────────────────────────
 
 app.whenReady().then(() => {
