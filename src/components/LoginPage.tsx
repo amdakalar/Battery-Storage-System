@@ -81,6 +81,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 type="text"
                 required
                 autoFocus
+                maxLength={50}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="ناوی بەکارهێنەر بنووسە..."
@@ -99,6 +100,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <input
                 type="password"
                 required
+                maxLength={100}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

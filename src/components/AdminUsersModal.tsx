@@ -121,8 +121,8 @@ export function AdminUsersModal({
     e.preventDefault();
     if (!targetUserForPassword) return;
 
-    if (adminSetNewPassword.length < 4) {
-      setMessage({ type: 'error', text: 'وشەی نهێنی دەبێت کەمترین ٤ پیت یان ژمارە بێت' });
+    if (adminSetNewPassword.length < 6) {
+      setMessage({ type: 'error', text: 'وشەی نهێنی دەبێت کەمترین ٦ پیت یان ژمارە بێت' });
       return;
     }
 
@@ -131,6 +131,7 @@ export function AdminUsersModal({
       const res = await changeUserPasswordAction({
         userId: targetUserForPassword.id,
         newPassword: adminSetNewPassword,
+        operatorUserId: currentAdmin.id,
       });
 
       if (res.success) {

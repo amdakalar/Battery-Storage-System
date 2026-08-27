@@ -36,13 +36,18 @@ export function ChangePasswordModal({
     setError(null);
     setSuccess(false);
 
+    if (!currentPassword) {
+      setError('تکایە وشەی نهێنی ئێستات بنووسە');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setError('وشەی نهێنی نوێ و دووبارەکردنەوەکەی وەک یەک نین');
       return;
     }
 
-    if (newPassword.length < 4) {
-      setError('وشەی نهێنی دەبێت کەمترین ٤ پیت یان ژمارە بێت');
+    if (newPassword.length < 6) {
+      setError('وشەی نهێنی دەبێت کەمترین ٦ پیت یان ژمارە بێت');
       return;
     }
 
@@ -51,8 +56,8 @@ export function ChangePasswordModal({
     try {
       const res = await changeUserPasswordAction({
         userId: currentUser.id,
-        currentPassword: currentPassword || undefined,
-        newPassword,
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim(),
       });
 
       if (res.success) {
@@ -125,6 +130,7 @@ export function ChangePasswordModal({
             <div className="relative">
               <input
                 type="password"
+                required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="وشەی نهێنی ئێستات بنووسە..."

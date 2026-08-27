@@ -63,10 +63,6 @@ async function verifyPassword(password: string, hashOrDigest: string): Promise<b
     } catch (e) {}
   }
 
-  if (password === 'admin' && hashOrDigest === '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy') {
-    return true;
-  }
-
   try {
     if (typeof crypto !== 'undefined' && crypto.createHash) {
       const legacyHash = crypto.createHash('sha256').update(`${password}:storage_salt_v1`).digest('hex');
@@ -335,8 +331,11 @@ export async function updateUserProfileAction(
   }
 }
 
+// Rate Limiter tracking failed login attempts to prevent brute-force attacks
+const loginAttempts = new Map<string, { count: number; lockUntil: number }>();
+
 /**
- * Log in with username and password
+ * Log in with username and password (with Brute-Force Rate Limiting & Input Bounds)
  */
 export async function loginUserAction(data: {
   username: string;
@@ -350,6 +349,25 @@ export async function loginUserAction(data: {
 }> {
   const username = (data.username || '').trim().toLowerCase();
   const password = data.password || '';
+
+  // 1. Length boundaries check (prevent Hash DoS / memory overflow attacks)
+  if (!username || username.length > 50) {
+    return { success: false, error: 'ناوی بەکارهێنەر دەبێت لە نێوان ٣ بۆ ٥٠ پیت بێت' };
+  }
+  if (!password || password.length > 100) {
+    return { success: false, error: 'وشەی نهێنی نادروستە' };
+  }
+
+  // 2. Brute-Force Lockout check (5 failed attempts = 60s lockout)
+  const nowTime = Date.now();
+  const attemptRecord = loginAttempts.get(username);
+  if (attemptRecord && attemptRecord.lockUntil > nowTime) {
+    const remainingSec = Math.ceil((attemptRecord.lockUntil - nowTime) / 1000);
+    return {
+      success: false,
+      error: `بەهۆی زیاد لە پێویست هەوڵی هەڵە، هەژمارەکەت بۆ ماوەی ${remainingSec} چرکە ڕاگیراوە.`,
+    };
+  }
 
   try {
     await ensureTables();
@@ -374,43 +392,28 @@ export async function loginUserAction(data: {
       }
     }
 
+    const recordFailedAttempt = () => {
+      const existing = loginAttempts.get(username) || { count: 0, lockUntil: 0 };
+      const newCount = existing.count + 1;
+      const lockUntil = newCount >= 5 ? Date.now() + 60000 : 0;
+      loginAttempts.set(username, { count: newCount, lockUntil });
+    };
+
     if (!result || !result.rows || result.rows.length === 0) {
-      // Direct hardcoded fallback for default accounts
-      if (username === 'admin' && password === 'admin') {
-        const adminUser: User = {
-          id: 'usr_admin_default',
-          username: 'admin',
-          fullName: 'بەڕێوەبەری سەرەکی (Admin)',
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        };
-        return { success: true, user: adminUser };
-      }
-      if (username === 'arez' && (password === '1234' || password === 'admin')) {
-        const arezUser: User = {
-          id: 'usr_arez',
-          username: 'arez',
-          fullName: 'Arez',
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        };
-        return { success: true, user: arezUser };
-      }
+      recordFailedAttempt();
       return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
     }
 
     const row: any = result.rows[0];
-    let passwordMatches = await verifyPassword(password, String(row.passwordHash));
-
-    if (!passwordMatches && username === 'arez' && (password === '1234' || password === 'admin')) {
-      passwordMatches = true;
-    }
+    const passwordMatches = await verifyPassword(password, String(row.passwordHash));
 
     if (!passwordMatches) {
+      recordFailedAttempt();
       return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
     }
+
+    // Reset failed attempts on successful credentials match
+    loginAttempts.delete(username);
 
     const status: UserStatus = String(row.status) as UserStatus;
 
@@ -457,33 +460,6 @@ export async function loginUserAction(data: {
     };
   } catch (err: any) {
     console.error('Error logging in:', err);
-    // Ultimate failsafe for default accounts
-    if (username === 'admin' && password === 'admin') {
-      return {
-        success: true,
-        user: {
-          id: 'usr_admin_default',
-          username: 'admin',
-          fullName: 'بەڕێوەبەری سەرەکی (Admin)',
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        },
-      };
-    }
-    if (username === 'arez' && (password === '1234' || password === 'admin')) {
-      return {
-        success: true,
-        user: {
-          id: 'usr_arez',
-          username: 'arez',
-          fullName: 'Arez',
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        },
-      };
-    }
     return { success: false, error: 'ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە' };
   }
 }
@@ -781,15 +757,16 @@ export async function changeUserPasswordAction(data: {
   userId: string;
   currentPassword?: string;
   newPassword: string;
+  operatorUserId?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     await ensureTables();
     const client = getTursoClient();
 
-    const { userId, currentPassword, newPassword } = data;
+    const { userId, currentPassword, newPassword, operatorUserId } = data;
 
-    if (!newPassword || newPassword.length < 4) {
-      return { success: false, error: 'وشەی نهێنی نوێ دەبێت کەمترین ٤ پیت یان ژمارە بێت' };
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'وشەی نهێنی نوێ دەبێت کەمترین ٦ پیت یان ژمارە بێت' };
     }
 
     const userRes = await client.execute({
@@ -801,14 +778,39 @@ export async function changeUserPasswordAction(data: {
       return { success: false, error: 'بەکارهێنەر نەدۆزرایەوە' };
     }
 
-    const row: any = userRes.rows[0];
+    const targetRow: any = userRes.rows[0];
 
-    // If currentPassword provided, verify it
+    // Authorization check:
+    // 1. If currentPassword is provided, verify it against target user's current password
+    // 2. If no currentPassword is provided, operatorUserId MUST be provided and must be an active ADMIN in the database
+    let isAuthorized = false;
+    let performerName = String(targetRow.fullName || 'User');
+
     if (currentPassword) {
-      const match = await verifyPassword(currentPassword, String(row.passwordHash));
+      const match = await verifyPassword(currentPassword, String(targetRow.passwordHash));
       if (!match) {
         return { success: false, error: 'وشەی نهێنی ئێستات هەڵەیە' };
       }
+      isAuthorized = true;
+    } else if (operatorUserId) {
+      const opCheck = await client.execute({
+        sql: `SELECT id, role, status, fullName FROM users WHERE id = ? LIMIT 1`,
+        args: [operatorUserId],
+      });
+      if (opCheck.rows.length > 0) {
+        const opRow: any = opCheck.rows[0];
+        if (opRow.role === 'ADMIN' && opRow.status === 'ACTIVE') {
+          isAuthorized = true;
+          performerName = String(opRow.fullName || 'Admin');
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return {
+        success: false,
+        error: 'دەسەڵاتی پێویستت نییە بۆ گۆڕینی وشەی نهێنی. تکایە وشەی نهێنی ئێستات بنووسە.',
+      };
     }
 
     const newHash = await hashPasswordBcrypt(newPassword);
@@ -820,10 +822,10 @@ export async function changeUserPasswordAction(data: {
     await logActivity(
       'USER_ROLE_CHANGE',
       'گۆڕینی وشەی نهێنی',
-      String(row.fullName || 'User'),
-      userId,
-      String(row.fullName),
-      `وشەی نهێنی هەژماری "${row.fullName}" بە سەرکەوتوویی نوێکرایەوە`
+      performerName,
+      operatorUserId || userId,
+      String(targetRow.fullName),
+      `وشەی نهێنی هەژماری "${targetRow.fullName}" بە سەرکەوتوویی نوێکرایەوە`
     );
 
     return { success: true };

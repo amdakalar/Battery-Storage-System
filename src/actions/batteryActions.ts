@@ -145,12 +145,36 @@ export async function saveBatteryAction(
   currentUserName?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await ensureTables();
-    const client = getTursoClient();
+    if (!battery || typeof battery !== 'object') {
+      return { success: false, error: 'زانیاریی باتری نادروستە' };
+    }
 
+    const name = String(battery.name || '').trim();
+    if (!name || name.length < 1 || name.length > 100) {
+      return { success: false, error: 'ناوی باتری دەبێت لە نێوان ١ بۆ ١٠٠ پیت بێت' };
+    }
+
+    const category = String(battery.category || 'DRONE').trim().substring(0, 50);
+    const lastChargeDate = String(battery.lastChargeDate || getTodayISODate()).trim();
+    const reminderIntervalDays = Math.max(1, Math.min(365, Math.floor(Number(battery.reminderIntervalDays) || 40)));
+    
+    let voltage: number | null = null;
+    if (battery.voltage !== undefined && battery.voltage !== null && !isNaN(Number(battery.voltage))) {
+      voltage = Math.max(0, Math.min(1000, Number(battery.voltage)));
+    }
+
+    let storagePercentage: number | null = null;
+    if (battery.storagePercentage !== undefined && battery.storagePercentage !== null && !isNaN(Number(battery.storagePercentage))) {
+      storagePercentage = Math.max(0, Math.min(100, Number(battery.storagePercentage)));
+    }
+
+    const notes = battery.notes ? String(battery.notes).trim().substring(0, 2000) : null;
     const cellsJson = battery.cells ? JSON.stringify(battery.cells) : null;
     const ownerUserId = battery.userId || currentUserId || null;
     const ownerName = battery.authorName || currentUserName || 'بەکارهێنەر';
+
+    await ensureTables();
+    const client = getTursoClient();
 
     // Check if battery already exists to distinguish Add vs Update
     const existing = await client.execute({
@@ -179,13 +203,13 @@ export async function saveBatteryAction(
         battery.id,
         ownerUserId,
         ownerName,
-        battery.name,
-        battery.category,
-        battery.lastChargeDate,
-        battery.reminderIntervalDays,
-        battery.voltage ?? null,
-        battery.storagePercentage ?? null,
-        battery.notes ?? null,
+        name,
+        category,
+        lastChargeDate,
+        reminderIntervalDays,
+        voltage,
+        storagePercentage,
+        notes,
         cellsJson,
         battery.createdAt || getTodayISODate(),
       ],
@@ -198,8 +222,8 @@ export async function saveBatteryAction(
         'دەستکاریکردنی زانیاریی باتری',
         ownerName,
         ownerUserId || undefined,
-        battery.name,
-        `دەستکاری کرا بە ڤۆڵتیەی ${battery.voltage || '-'}V و ڕێژەی ${battery.storagePercentage || '-'}%`
+        name,
+        `دەستکاری کرا بە ڤۆڵتیەی ${voltage ?? '-'}V و ڕێژەی ${storagePercentage ?? '-'}%`
       );
     } else {
       await logActivity(
@@ -207,8 +231,8 @@ export async function saveBatteryAction(
         'زیادکردنی باتریی نوێ',
         ownerName,
         ownerUserId || undefined,
-        battery.name,
-        `باتریی نوێ تۆمارکرا بە هاوپۆلی "${battery.category}" و خولی ${battery.reminderIntervalDays} ڕۆژ`
+        name,
+        `باتریی نوێ تۆمارکرا بە هاوپۆلی "${category}" و خولی ${reminderIntervalDays} ڕۆژ`
       );
     }
 
@@ -519,6 +543,17 @@ export async function clearAllBatteriesAction(
   try {
     await ensureTables();
     const client = getTursoClient();
+
+    // Security Authorization: Verify that the caller is an active ADMIN in the database
+    if (currentUserId) {
+      const authCheck = await client.execute({
+        sql: `SELECT role, status FROM users WHERE id = ? LIMIT 1`,
+        args: [currentUserId],
+      });
+      if (authCheck.rows.length === 0 || authCheck.rows[0].role !== 'ADMIN' || authCheck.rows[0].status !== 'ACTIVE') {
+        return { success: false, count: 0, error: 'دەسەڵاتی ئادمین پێویستە بۆ سڕینەوەی گشتیی داتاکان' };
+      }
+    }
 
     // 1. Fetch full snapshot of existing batteries and charge histories before clearing
     const batRows = await client.execute(`SELECT * FROM batteries`);
@@ -838,6 +873,17 @@ export async function clearDeletionLogsAction(
     await ensureTables();
     const client = getTursoClient();
 
+    // Security Authorization: Verify that the caller is an active ADMIN in the database
+    if (currentUserId) {
+      const authCheck = await client.execute({
+        sql: `SELECT role, status FROM users WHERE id = ? LIMIT 1`,
+        args: [currentUserId],
+      });
+      if (authCheck.rows.length === 0 || authCheck.rows[0].role !== 'ADMIN' || authCheck.rows[0].status !== 'ACTIVE') {
+        return { success: false, error: 'دەسەڵاتی ئادمین پێویستە بۆ سڕینەوەی لۆگی سڕینەوەکان' };
+      }
+    }
+
     await client.execute(`DELETE FROM deletion_logs`);
 
     await logActivity(
@@ -865,6 +911,15 @@ export async function importBatteriesAction(
   currentUserName?: string
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
+    if (!Array.isArray(batteries) || batteries.length === 0) {
+      return { success: false, count: 0, error: 'هیچ باترییەک بۆ هاوردەکردن نییە' };
+    }
+
+    // Security: Bound maximum array size to prevent resource exhaustion / DoS
+    if (batteries.length > 500) {
+      return { success: false, count: 0, error: 'ئەوپەڕی بڕی هاوردەکردن ٥٠٠ باترییە لە یەک کاتدا.' };
+    }
+
     await ensureTables();
     const client = getTursoClient();
 
@@ -873,8 +928,17 @@ export async function importBatteriesAction(
     const ownerName = currentUserName || 'بەکارهێنەر';
 
     for (const b of batteries) {
+      if (!b || typeof b !== 'object') continue;
+      const bName = String(b.name || '').trim().substring(0, 100);
+      if (!bName) continue;
+
       const cellsJson = b.cells ? JSON.stringify(b.cells) : null;
       const ownerUserId = b.userId || currentUserId || null;
+      const bCategory = String(b.category || 'DRONE').trim().substring(0, 50);
+      const bInterval = Math.max(1, Math.min(365, Math.floor(Number(b.reminderIntervalDays) || 40)));
+      const bVoltage = (b.voltage !== undefined && b.voltage !== null && !isNaN(Number(b.voltage))) ? Math.max(0, Math.min(1000, Number(b.voltage))) : null;
+      const bStoragePct = (b.storagePercentage !== undefined && b.storagePercentage !== null && !isNaN(Number(b.storagePercentage))) ? Math.max(0, Math.min(100, Number(b.storagePercentage))) : null;
+      const bNotes = b.notes ? String(b.notes).trim().substring(0, 2000) : null;
 
       batteryStatements.push({
         sql: `INSERT OR REPLACE INTO batteries (
@@ -882,16 +946,16 @@ export async function importBatteriesAction(
           voltage, storagePercentage, notes, cells_json, createdAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
-          b.id,
+          b.id || `bat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           ownerUserId,
           b.authorName || ownerName,
-          b.name,
-          b.category,
-          b.lastChargeDate,
-          b.reminderIntervalDays || 40,
-          b.voltage ?? null,
-          b.storagePercentage ?? null,
-          b.notes ?? null,
+          bName,
+          bCategory,
+          b.lastChargeDate || getTodayISODate(),
+          bInterval,
+          bVoltage,
+          bStoragePct,
+          bNotes,
           cellsJson,
           b.createdAt || getTodayISODate(),
         ],

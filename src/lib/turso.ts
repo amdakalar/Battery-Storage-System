@@ -45,7 +45,7 @@ async function executeWebLocalQuery(stmt: any): Promise<{ rows: any[]; columns: 
     }
 
     if (users.length === 0) {
-      // Default admin user
+      // Default admin user (seeded on initial clean state)
       users = [
         {
           id: 'usr_admin_default',
@@ -56,18 +56,6 @@ async function executeWebLocalQuery(stmt: any): Promise<{ rows: any[]; columns: 
           status: 'ACTIVE',
           createdAt: '2026-01-01T00:00:00.000Z',
           approvedBy: 'SYSTEM',
-          approvedAt: '2026-01-01T00:00:00.000Z',
-          lastLoginAt: new Date().toISOString(),
-        },
-        {
-          id: 'usr_arez',
-          username: 'arez',
-          fullName: 'Arez',
-          passwordHash: '$2a$10$7Zz724E/pC8G30Y9uK2p3.kP.Xg8e6QW7k2jO4c5Qe8e6QW7k2jO',
-          role: 'ADMIN',
-          status: 'ACTIVE',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          approvedBy: 'admin',
           approvedAt: '2026-01-01T00:00:00.000Z',
           lastLoginAt: new Date().toISOString(),
         },
@@ -341,8 +329,8 @@ export function saveCloudTursoConfig(url: string, token: string): void {
   resetTursoClient();
 }
 
-export const DEFAULT_TURSO_DATABASE_URL = 'libsql://storgekrd-amdakalar.aws-ap-northeast-1.turso.io';
-export const DEFAULT_TURSO_AUTH_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODc0MTcwODEsImlkIjoiMDFhMDJhNWItZmMwMS03Y2QyLWIxNmQtNjdiN2E2NmRjOGViIiwia2lkIjoiOFZCRHU2WTVhcm9UanN3YkpoQ0tYenl2dkhFVnJnckJ1ODRja21NX3ROYyIsInJpZCI6IjczM2Q0OTMwLTE4Y2ItNGNjNy1hZTNjLTVmM2JiYTQwOTBjZiJ9.o_MHqiotmRn3fSxe6aHesdKBgIhmjv3O8FCN_SNFAvR4OMc8y4TkLIg2pOFdUJ0bWMGU2ra0kiTsgSB5cP5VDA';
+export const DEFAULT_TURSO_DATABASE_URL = '';
+export const DEFAULT_TURSO_AUTH_TOKEN = '';
 
 /**
  * Get current active Turso configuration

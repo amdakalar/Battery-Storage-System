@@ -10,8 +10,7 @@ import fs from 'fs';
 import https from 'https';
 import http from 'http';
 
-// Silence non-critical Electron dev security warnings in console
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+// ─── Environment & Platform ───────────────────────────────────────────────────
 
 const IS_DEV = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const APP_ID = 'com.ahmed.battery.storagesystem';
@@ -140,7 +139,7 @@ function createWindow(): void {
       contextIsolation: true,        // Security: Isolated context
       sandbox: false,                // Needed for preload to access Node APIs
       preload: preloadPath,
-      webSecurity: false,            // Allows remote fetch to Turso Cloud & GitHub API from local file://
+      webSecurity: true,             // Security: Enforce Same-Origin Policy (Turso & GitHub are proxied via IPC)
       allowRunningInsecureContent: false,
       devTools: IS_DEV,              // Disable DevTools in production
     },
@@ -485,11 +484,40 @@ ipcMain.handle('check-github-update', async (_event, customRepo?: string) => {
 
 ipcMain.handle('download-and-install-update', async (event, { downloadUrl, fileName }: { downloadUrl: string; fileName: string }) => {
   try {
-    if (!downloadUrl) {
+    if (!downloadUrl || typeof downloadUrl !== 'string') {
       return { success: false, error: 'لینکی داونلۆدکردن بەردەست نییە.' };
     }
+
+    // Security: Validate download URL domain to prevent Arbitrary Binary Download & Execution (RCE)
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(downloadUrl);
+    } catch {
+      return { success: false, error: 'لینکی داونلۆدکردن نادروستە.' };
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      return { success: false, error: 'داونلۆدکردن دەبێت تەنها بە پرۆتۆکۆلی پارێزراوی HTTPS بێت.' };
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const isAllowedHost =
+      hostname === 'github.com' ||
+      hostname === 'api.github.com' ||
+      hostname === 'objects.githubusercontent.com' ||
+      hostname.endsWith('.githubusercontent.com');
+
+    if (!isAllowedHost) {
+      log('WARN', `Untrusted update download URL rejected: ${downloadUrl}`);
+      return { success: false, error: 'ناونیشانی سێرڤەری داونلۆد لە سەرچاوەی باوەڕپێکراوی فەرمی GitHub نییە.' };
+    }
+
     const tempDir = app.getPath('temp');
-    const safeFileName = fileName || 'BatterySystemSetup.exe';
+    // Security: Prevent directory traversal on file name
+    const rawFileName = path.basename(fileName || '').trim();
+    const safeFileName = rawFileName && rawFileName.toLowerCase().endsWith('.exe')
+      ? rawFileName
+      : 'BatterySystemSetup.exe';
     const targetPath = path.join(tempDir, safeFileName);
 
     log('INFO', `Starting update download from ${downloadUrl} to ${targetPath}`);
@@ -551,7 +579,7 @@ ipcMain.handle('turso-execute', async (_event, { url, authToken, stmt }: { url?:
   try {
     const targetUrl = (url || '').trim();
     const targetToken = (authToken || '').trim();
-    if (!targetUrl) return { success: false, error: 'Database URL is required' };
+    if (!targetUrl || typeof targetUrl !== 'string') return { success: false, error: 'Database URL is required' };
 
     let httpUrl = targetUrl.replace(/^libsql:\/\//i, 'https://');
     if (!httpUrl.startsWith('http://') && !httpUrl.startsWith('https://')) {
