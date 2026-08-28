@@ -329,8 +329,8 @@ export function saveCloudTursoConfig(url: string, token: string): void {
   resetTursoClient();
 }
 
-export const DEFAULT_TURSO_DATABASE_URL = '';
-export const DEFAULT_TURSO_AUTH_TOKEN = '';
+export const DEFAULT_TURSO_DATABASE_URL = 'libsql://storgekrd-amdakalar.aws-ap-northeast-1.turso.io';
+export const DEFAULT_TURSO_AUTH_TOKEN = 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODc0MTcwODEsImlkIjoiMDFhMDJhNWItZmMwMS03Y2QyLWIxNmQtNjdiN2E2NmRjOGViIiwia2lkIjoiOFZCRHU2WTVhcm9UanN3YkpoQ0tYenl2dkhFVnJnckJ1ODRja21NX3ROYyIsInJpZCI6IjczM2Q0OTMwLTE4Y2ItNGNjNy1hZTNjLTVmM2JiYTQwOTBjZiJ9.o_MHqiotmRn3fSxe6aHesdKBgIhmjv3O8FCN_SNFAvR4OMc8y4TkLIg2pOFdUJ0bWMGU2ra0kiTsgSB5cP5VDA';
 
 /**
  * Get current active Turso configuration

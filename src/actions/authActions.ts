@@ -9,8 +9,12 @@ import { User, UserRole, UserStatus } from '@/src/types';
 let tablesInitialized = false;
 async function ensureTables() {
   if (!tablesInitialized) {
-    await initTursoTables();
-    tablesInitialized = true;
+    try {
+      await initTursoTables();
+      tablesInitialized = true;
+    } catch (initErr) {
+      console.warn('initTursoTables notice:', initErr);
+    }
   }
 
   // Auto-seed initial admin if database has 0 users

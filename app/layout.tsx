@@ -50,6 +50,7 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
+          crossOrigin="anonymous"
         />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/drone_battery_app_icon.png" />
