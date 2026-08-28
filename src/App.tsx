@@ -374,12 +374,13 @@ export default function App() {
       refreshPendingCount();
     }
 
-    // 3. Auto-check for updates silently after 1.5 seconds (desktop & web)
+    // 3. Auto-check for updates silently after 2.5 seconds in desktop app
+    const isDesktop = typeof window !== 'undefined' && Boolean((window as any).electronAPI?.checkForUpdate);
     const timer = setTimeout(() => {
-      if (isMounted) {
+      if (isMounted && isDesktop) {
         handleCheckForUpdates(true);
       }
-    }, 1500);
+    }, 2500);
 
     return () => {
       isMounted = false;
@@ -682,7 +683,7 @@ export default function App() {
       if (typeof window !== 'undefined' && (window as any).electronAPI?.checkForUpdate) {
         res = await (window as any).electronAPI.checkForUpdate();
       } else {
-        // Direct GitHub Web Check
+        // Safe Web Check via internal same-origin Next.js API (immune to CSP & rate limits)
         const repo = APP_CONFIG.GITHUB_REPO;
         const currentVersion = APP_CONFIG.CURRENT_VERSION;
         let latestVersion = '';
@@ -691,28 +692,18 @@ export default function App() {
         let htmlUrl = `https://github.com/${repo}`;
 
         try {
-          const apiRes = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
-          if (apiRes.ok) {
+          const apiRes = await fetch('/api/check-update').catch(() => null);
+          if (apiRes && apiRes.ok) {
             const data = await apiRes.json();
-            latestVersion = data.tag_name || data.name || '';
-            releaseName = data.name || latestVersion;
-            releaseNotes = data.body || 'وەشانی نوێ لەسەر GitHub بەردەستە.';
-            htmlUrl = data.html_url || htmlUrl;
-          } else {
-            // Fallback to tags API
-            const tagsRes = await fetch(`https://api.github.com/repos/${repo}/tags`);
-            if (tagsRes.ok) {
-              const tags = await tagsRes.json();
-              if (Array.isArray(tags) && tags.length > 0) {
-                latestVersion = tags[0].name || '';
-                releaseName = `وەشانی نوێ ${latestVersion}`;
-                releaseNotes = `وەشانی نوێتر (${latestVersion}) لەسەر سێرڤەری GitHub بەردەستە.`;
-                htmlUrl = `https://github.com/${repo}/releases/tag/${latestVersion}`;
-              }
+            if (data && data.success) {
+              latestVersion = data.latestVersion || '';
+              releaseName = data.releaseName || latestVersion;
+              releaseNotes = data.releaseNotes || 'وەشانی نوێ لەسەر GitHub بەردەستە.';
+              htmlUrl = data.htmlUrl || htmlUrl;
             }
           }
         } catch (fetchErr) {
-          // Ignore network errors in silent check
+          // Graceful fallback
         }
 
         const hasUpdate = isNewerVersion(latestVersion || currentVersion, currentVersion);
