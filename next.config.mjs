@@ -52,7 +52,20 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.turso.io wss://*.turso.io https://api.github.com https://fonts.googleapis.com https://fonts.gstatic.com data: blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self';",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "img-src 'self' data: blob:",
+              "connect-src 'self' https://storgekrd-amdakalar.aws-ap-northeast-1.turso.io wss://storgekrd-amdakalar.aws-ap-northeast-1.turso.io https://fonts.googleapis.com https://fonts.gstatic.com data: blob:",
+              "frame-ancestors 'none'",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "upgrade-insecure-requests",
+              "report-uri /api/csp-report",
+            ].join('; '),
           },
           // Server header suppression
           {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'storage-battery-v2';
+const CACHE_NAME = 'storage-battery-v3.1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -6,14 +6,13 @@ const STATIC_ASSETS = [
   '/favicon.svg',
 ];
 
-// Install: cache static assets
+// Install: cache static assets (without unconditional skipWaiting to prevent mid-session disruption)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
 // Activate: clean up old caches
@@ -28,9 +27,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Listen for messages from client (badge updates, notification triggers)
+// Listen for messages from client (badge updates, gated skipWaiting, notification triggers)
 self.addEventListener('message', (event) => {
   if (!event.data) return;
+
+  // Gated skipWaiting triggered explicitly by user/app
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
 
   // Handle App Badging on Mobile / Desktop PWA
   if (event.data.type === 'SET_BADGE') {
