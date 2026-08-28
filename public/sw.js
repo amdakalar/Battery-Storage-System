@@ -56,6 +56,11 @@ self.addEventListener('message', (event) => {
 
 // Fetch: Network-first for API/actions, Cache-first for static assets
 self.addEventListener('fetch', (event) => {
+  // Ignore non-http/https schemes (such as chrome-extension://, moz-extension://, data:)
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+    return;
+  }
+
   const url = new URL(event.request.url);
 
   // Skip non-GET requests and server actions / API routes
