@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -37,13 +38,16 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') || undefined;
+
   return (
-    <html lang="ckb" dir="rtl">
+    <html lang="ckb" dir="rtl" nonce={nonce}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -58,6 +62,7 @@ export default function RootLayout({
         <meta name="color-scheme" content="light dark" />
         {/* Register Service Worker */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
